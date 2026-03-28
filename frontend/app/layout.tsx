@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Providers from './providers';
+import Providers from '../app/providers';
 import './globals.css';
 
 const inter = Inter({
