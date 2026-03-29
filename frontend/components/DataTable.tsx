@@ -5,7 +5,6 @@ import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ColumnInfo } from '@/lib/types';
 
 interface DataTableProps {
@@ -84,7 +83,7 @@ export default function DataTable({ data, columns, isLoading }: DataTableProps) 
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 w-full min-w-0 overflow-hidden">
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -97,9 +96,9 @@ export default function DataTable({ data, columns, isLoading }: DataTableProps) 
       </div>
 
       {/* Table */}
-      <ScrollArea className="w-full rounded-xl border border-border/60 bg-card/40">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px] text-sm">
+      <div className="w-full rounded-xl border border-border/60 bg-card/40 overflow-hidden">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-border/60 bg-card/60">
                 {columns.map((col) => (
@@ -109,10 +108,10 @@ export default function DataTable({ data, columns, isLoading }: DataTableProps) 
                     onClick={() => handleSort(col.name)}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="truncate max-w-[120px]">{col.name}</span>
+                      <span className="max-w-[120px] truncate">{col.name}</span>
                       <Badge
                         variant="outline"
-                        className={`hidden lg:inline-flex shrink-0 border px-1 py-0 text-[9px] h-4 ${DTYPE_COLORS[col.dtype] ?? DTYPE_COLORS.unknown}`}
+                        className={`hidden lg:inline-flex shrink-0 border px-1 py-0 text-[10px] h-4 ${DTYPE_COLORS[col.dtype] ?? DTYPE_COLORS.unknown}`}
                       >
                         {col.dtype}
                       </Badge>
@@ -135,9 +134,9 @@ export default function DataTable({ data, columns, isLoading }: DataTableProps) 
                   {columns.map((col) => (
                     <td
                       key={col.name}
-                      className="px-4 py-2.5 text-foreground/90"
+                      className="px-4 py-2.5 text-foreground/90 max-w-[200px]"
                     >
-                      <span className="block max-w-[180px] truncate" title={String(row[col.name] ?? '')}>
+                      <span className="block truncate" title={String(row[col.name] ?? '')}>
                         {row[col.name] == null ? (
                           <span className="text-muted-foreground/40 italic text-xs">null</span>
                         ) : (
@@ -151,7 +150,7 @@ export default function DataTable({ data, columns, isLoading }: DataTableProps) 
             </tbody>
           </table>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Pagination */}
       <div className="flex items-center justify-between text-xs text-muted-foreground">

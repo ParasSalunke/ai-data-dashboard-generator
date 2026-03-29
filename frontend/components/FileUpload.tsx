@@ -144,7 +144,7 @@ export default function FileUpload({ onSuccess, className }: FileUploadProps) {
         onDrop={onDrop}
         onClick={() => uploadState === 'idle' || uploadState === 'error' ? inputRef.current?.click() : undefined}
         className={cn(
-          'relative flex min-h-[280px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300',
+          'relative flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-300 sm:min-h-[280px] sm:p-8',
           {
             'border-border/60 bg-card/40 hover:border-violet-500/60 hover:bg-violet-500/5 hover:scale-[1.01]':
               uploadState === 'idle',

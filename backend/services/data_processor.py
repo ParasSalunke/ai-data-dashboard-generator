@@ -1,6 +1,7 @@
 import os
 import math
 import logging
+logging.basicConfig(filename='backend_debug.log', level=logging.DEBUG)
 import json
 from pathlib import Path
 from typing import Any, Literal

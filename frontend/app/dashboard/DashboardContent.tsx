@@ -116,51 +116,70 @@ export default function DashboardContent() {
   }, [charts]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
 
       {/* ── Top Nav ──────────────────────────────────────────────────────── */}
-      <header className="flex h-13 shrink-0 items-center justify-between border-b border-border/60 bg-card/60 px-4 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild className="h-8 gap-1.5 text-muted-foreground hover:text-foreground">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 bg-card/60 px-3 backdrop-blur-sm sm:px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button variant="ghost" size="sm" asChild className="h-8 shrink-0 gap-1.5 px-2 text-muted-foreground hover:text-foreground">
             <Link href="/">
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden sm:inline text-xs">Back</span>
             </Link>
           </Button>
-          <Separator orientation="vertical" className="h-5" />
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-violet-400" />
-            <span className="text-sm font-semibold text-foreground">Dashboard</span>
+          <Separator orientation="vertical" className="h-5 shrink-0" />
+          <div className="flex min-w-0 items-center gap-1.5">
+            <BarChart3 className="h-4 w-4 shrink-0 text-violet-400" />
+            <span className="truncate text-sm font-semibold text-foreground">Dashboard</span>
           </div>
         </div>
 
-        {/* Dataset info */}
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="flex items-center gap-2">
+          {/* Dataset info — desktop only */}
+          <div className="hidden items-center gap-2 md:flex">
+            {totalRows > 0 && (
+              <Badge variant="outline" className="gap-1.5 border-border/60 text-xs text-muted-foreground">
+                <Database className="h-3 w-3" />
+                {totalRows.toLocaleString()} rows · {columnData.length} cols
+              </Badge>
+            )}
+            {charts.length > 0 && (
+              <Badge variant="outline" className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-400">
+                {charts.length} charts
+              </Badge>
+            )}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 shrink-0 p-0"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark'
+              ? <Sun className="h-4 w-4 text-muted-foreground" />
+              : <Moon className="h-4 w-4 text-muted-foreground" />
+            }
+          </Button>
+        </div>
+      </header>
+
+      {/* ── Mobile dataset info strip ─────────────────────────────────────── */}
+      {(totalRows > 0 || charts.length > 0) && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/40 bg-card/20 px-3 py-1.5 md:hidden">
           {totalRows > 0 && (
-            <Badge variant="outline" className="gap-1.5 border-border/60 text-xs text-muted-foreground">
-              <Database className="h-3 w-3" />
+            <Badge variant="outline" className="gap-1 border-border/60 text-[10px] text-muted-foreground">
+              <Database className="h-2.5 w-2.5" />
               {totalRows.toLocaleString()} rows · {columnData.length} cols
             </Badge>
           )}
           {charts.length > 0 && (
-            <Badge variant="outline" className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-400">
+            <Badge variant="outline" className="gap-1 border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-400">
               {charts.length} charts
             </Badge>
           )}
         </div>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        >
-          {theme === 'dark'
-            ? <Sun className="h-4 w-4 text-muted-foreground" />
-            : <Moon className="h-4 w-4 text-muted-foreground" />
-          }
-        </Button>
-      </header>
+      )}
 
       {/* ── Main layout ──────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
@@ -169,63 +188,89 @@ export default function DashboardContent() {
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full min-h-0 flex-col">
 
-            {/* Tab bar */}
-            <div className="flex items-center gap-3 border-b border-border/60 bg-card/40 px-4 py-2">
-              <TabsList className="h-8 bg-transparent p-0 gap-0.5">
-                <TabsTrigger value="charts" className="h-8 rounded-lg text-xs gap-1.5 px-3">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Charts
-                  {charts.length > 0 && (
-                    <Badge variant="secondary" className="ml-0.5 h-4 px-1.5 text-[10px]">
-                      {filteredCharts.length}/{charts.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="data" className="h-8 rounded-lg text-xs gap-1.5 px-3">
-                  <Table2 className="h-3.5 w-3.5" />
-                  Data
-                </TabsTrigger>
-                <TabsTrigger value="ask" className="h-8 rounded-lg text-xs gap-1.5 px-3 md:hidden">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  Ask
-                </TabsTrigger>
-                <TabsTrigger value="insights" className="h-8 rounded-lg text-xs gap-1.5 px-3 md:hidden">
-                  <Lightbulb className="h-3.5 w-3.5" />
-                  Insights
-                </TabsTrigger>
-              </TabsList>
+            {/* Tab bar + optional filter row (stacked on mobile, side-by-side on sm+) */}
+            <div className="shrink-0 border-b border-border/60 bg-card/40">
+              {/* Top row: tabs always visible */}
+              <div className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2">
+                <TabsList className="h-8 shrink-0 bg-transparent p-0 gap-0.5">
+                  <TabsTrigger value="charts" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3">
+                    <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+                    <span>Charts</span>
+                    {charts.length > 0 && (
+                      <Badge variant="secondary" className="ml-0.5 h-4 px-1.5 text-[10px]">
+                        {filteredCharts.length}/{charts.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="data" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3">
+                    <Table2 className="h-3.5 w-3.5 shrink-0" />
+                    <span>Data</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="ask" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3 md:hidden">
+                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                    <span>Ask</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="insights" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3 md:hidden">
+                    <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                    <span>Insights</span>
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* FilterBar — only visible in charts tab */}
+                {/* Desktop search — only in charts tab, hidden on mobile (shown in separate row) */}
+                {activeTab === 'charts' && charts.length > 0 && (
+                  <div className="ml-auto hidden items-center gap-2 sm:flex">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search charts…"
+                        value={chartSearch}
+                        onChange={(e) => setChartSearch(e.target.value)}
+                        className="h-7 w-36 pl-8 text-xs bg-card/60 border-border/60 md:w-40"
+                      />
+                      {chartSearch && (
+                        <button
+                          onClick={() => setChartSearch('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter pills row — full-width horizontal scroll (both mobile + desktop) */}
               {activeTab === 'charts' && charts.length > 0 && (
-                <div className="ml-auto flex items-center gap-2">
-                  {/* Search */}
-                  <div className="relative hidden sm:block">
-                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <div className="flex items-center gap-2 overflow-x-auto border-t border-border/40 px-3 pb-1.5 pt-1 sm:px-4 [&::-webkit-scrollbar]:hidden">
+                  {/* Mobile search input */}
+                  <div className="relative shrink-0 sm:hidden">
+                    <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Search charts…"
+                      placeholder="Search…"
                       value={chartSearch}
                       onChange={(e) => setChartSearch(e.target.value)}
-                      className="h-7 w-40 pl-8 text-xs bg-card/60 border-border/60"
+                      className="h-6 w-24 pl-7 text-[11px] bg-card/60 border-border/60"
                     />
                     {chartSearch && (
                       <button
                         onClick={() => setChartSearch('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-2.5 w-2.5" />
                       </button>
                     )}
                   </div>
 
                   {/* Type filter pills */}
-                  <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-card/40 p-0.5">
+                  <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-border/60 bg-card/40 p-0.5">
                     {CHART_TYPE_OPTIONS.filter(
                       (o) => o.value === 'all' || (typeCounts[o.value] ?? 0) > 0
                     ).map((opt) => (
                       <button
                         key={opt.value}
                         onClick={() => setChartFilter(opt.value)}
-                        className={`rounded px-2 py-0.5 text-[11px] font-medium transition-all ${
+                        className={`whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-medium transition-all ${
                           chartFilter === opt.value
                             ? 'bg-violet-500/20 text-violet-300'
                             : 'text-muted-foreground hover:text-foreground'
@@ -281,7 +326,7 @@ export default function DashboardContent() {
 
                 {/* Mobile-only tabs */}
                 <TabsContent value="ask" className="mt-0 md:hidden">
-                  <div className="h-[calc(100vh-140px)]">
+                  <div className="h-[calc(100dvh-175px)] sm:h-[calc(100dvh-155px)]">
                     <AskPanel datasetId={datasetId} />
                   </div>
                 </TabsContent>

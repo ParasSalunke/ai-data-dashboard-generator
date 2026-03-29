@@ -41,7 +41,7 @@ function SortableChartCard({ chart }: { chart: ChartConfig }) {
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className="min-w-0">
       <ChartCard
         chart={chart}
         isDragging={isDragging}
@@ -53,7 +53,7 @@ function SortableChartCard({ chart }: { chart: ChartConfig }) {
 
 function ChartSkeleton() {
   return (
-    <div className="rounded-2xl border border-border/40 bg-card/40 p-4">
+    <div className="rounded-2xl border border-border/40 bg-card/40 p-4 min-w-0">
       <div className="mb-3 flex items-center justify-between">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-5 w-16 rounded-full" />

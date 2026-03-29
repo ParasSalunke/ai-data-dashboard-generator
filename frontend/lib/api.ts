@@ -8,8 +8,8 @@ import type {
 } from './types';
 
 export const api = axios.create({
-  // Use relative /api path so Next.js handles CORS via rewrites
-  baseURL: '/api',
+  // Bypass Next.js rewrites to avoid multipart/form-data body proxying issues
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
   timeout: 120_000, // 2 min for large CSV + AI processing
 });
 

@@ -70,7 +70,7 @@ export default function HomePage() {
           <div className="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-600/10 blur-[80px]" />
         </div>
 
-        <div className="mx-auto max-w-6xl px-6 pt-16 pb-12 text-center">
+        <div className="mx-auto max-w-6xl px-4 pb-10 pt-10 text-center sm:px-6 sm:pt-16 sm:pb-12">
           {/* Badge */}
           <div className="mb-6 flex justify-center">
             <Badge
@@ -83,21 +83,21 @@ export default function HomePage() {
           </div>
 
           {/* Headline */}
-          <h1 className="mb-4 text-5xl font-bold tracking-tight text-foreground md:text-6xl lg:text-7xl">
+          <h1 className="mb-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
             Your Data.{' '}
             <span className="bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
               Instant Insights.
             </span>
           </h1>
 
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground leading-relaxed">
+          <p className="mx-auto mb-8 max-w-2xl text-base text-muted-foreground leading-relaxed sm:mb-10 sm:text-lg">
             Drop any CSV file and get auto-generated charts, AI-powered business insights, and a
-            fully interactive dashboard — in seconds. No configuration. No SQL. Just drag, drop,
+            fully interactive dashboard - in seconds. No configuration. No SQL. Just drag, drop,
             and discover.
           </p>
 
           {/* Stats row */}
-          <div className="mb-12 flex flex-wrap justify-center gap-8">
+          <div className="mb-8 flex flex-wrap justify-center gap-6 sm:mb-12 sm:gap-8">
             {stats.map((s) => (
               <div key={s.label} className="text-center">
                 <div className="text-2xl font-bold text-foreground">{s.value}</div>

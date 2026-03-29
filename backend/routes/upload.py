@@ -83,7 +83,7 @@ async def upload_csv(file: UploadFile = File(...)):
             lambda: processor.process_csv(csv_path, dataset_dir)
         )
 
-        return UploadResponse(
+        resp = UploadResponse(
             dataset_id=dataset_id,
             columns=[ColumnInfo(**col) for col in result["columns"]],
             preview=result["preview"],
@@ -91,6 +91,8 @@ async def upload_csv(file: UploadFile = File(...)):
             col_count=result["col_count"],
             file_size_bytes=file_size,
         )
+        logger.info(f"Upload completed successfully for {dataset_id}")
+        return resp
 
     except HTTPException:
         raise
