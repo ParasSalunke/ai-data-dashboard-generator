@@ -3,8 +3,8 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        // Default to localhost for local dev if NEXT_PUBLIC_API_URL is missing
+        source: '/api/backend/:path*',
+        // Default to localhost for local dev if NEXT_PUBLIC_API_URL is missing.
         destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/:path*`,
       },
     ];

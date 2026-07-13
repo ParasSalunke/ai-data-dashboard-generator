@@ -9,7 +9,7 @@ import type {
 
 export const api = axios.create({
   // Bypass Next.js rewrites to avoid multipart/form-data body proxying issues
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api/backend',
   timeout: 120_000, // 2 min for large CSV + AI processing
 });
 

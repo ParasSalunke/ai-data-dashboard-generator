@@ -348,7 +348,7 @@ vercel --prod
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_API_URL` | `https://your-backend.onrender.com` |
+| `NEXT_PUBLIC_API_URL` | Optional. Leave unset to use the same-deployment `/api/backend` route. |
 
 ---
 

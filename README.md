@@ -192,31 +192,31 @@ See the [Backend README](./backend/README.md) for full request/response schemas.
 
 ## 🌐 Deployment
 
-### Backend → Render
+### Vercel Services
 
-The backend includes a `render.yaml` for one-click deployment:
+The repository now includes a root `vercel.json` that deploys the Next.js frontend and FastAPI backend together as Vercel Services.
 
-```yaml
-# backend/render.yaml
-services:
-  - type: web
-    name: ai-data-dashboard-backend
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --timeout 120"
+```json
+{
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "nextjs"
+    },
+    "backend": {
+      "root": "backend",
+      "framework": "fastapi",
+      "entrypoint": "main:app"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/backend(/.*)?", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}
 ```
 
-Set these environment variables in Render dashboard:
-- `GEMINI_API_KEY` — your Gemini API key
-- `ALLOWED_ORIGINS` — your Vercel frontend URL
-
-### Frontend → Vercel
-
-```bash
-cd frontend
-vercel --prod
-```
-
-Set `NEXT_PUBLIC_API_URL` to your Render backend URL.
+Set `GEMINI_API_KEY` in Vercel for the backend service. `NEXT_PUBLIC_API_URL` is optional; leave it unset to use the built-in `/api/backend` routing.
 
 ---
 
