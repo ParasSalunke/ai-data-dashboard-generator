@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import FileUpload from '@/components/FileUpload';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   BarChart3,
@@ -14,6 +15,9 @@ import {
   FileText,
   TrendingUp,
 } from 'lucide-react';
+import { PieChartDefault } from '@/components/charts/pie-charts/PieChartDefault';
+import ThemeToggleButton from '@/components/theme/ThemeToggleButton';
+import AuthControl from '@/components/auth/AuthControl';
 
 const features = [
   {
@@ -61,13 +65,30 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-background">
+      {/* Header Navigation */}
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-violet-500 to-sky-500 text-white font-bold shadow-md shadow-violet-500/20">
+              <Zap className="h-4 w-4" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              Datovo
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <ThemeToggleButton />
+              <AuthControl />
+          </div>
+        </div>
+      </header>
       {/* Hero */}
       <div className="relative overflow-hidden">
         {/* Background gradient blobs */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-violet-600/20 blur-[120px]" />
-          <div className="absolute -top-20 -right-40 h-[400px] w-[400px] rounded-full bg-sky-600/20 blur-[100px]" />
-          <div className="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-600/10 blur-[80px]" />
+          <div className="absolute -top-40 -left-40 h-125 w-125 rounded-full bg-violet-600/20 blur-[120px]" />
+          <div className="absolute -top-20 -right-40 h-100 w-100 rounded-full bg-sky-600/20 blur-[100px]" />
+          <div className="absolute top-1/2 left-1/2 h-100 w-100 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-600/10 blur-[80px]" />
         </div>
 
         <div className="mx-auto max-w-6xl px-4 pb-10 pt-10 text-center sm:px-6 sm:pt-16 sm:pb-12">
@@ -85,7 +106,7 @@ export default function HomePage() {
           {/* Headline */}
           <h1 className="mb-4 text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
             Your Data.{' '}
-            <span className="bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-violet-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
               Instant Insights.
             </span>
           </h1>
@@ -160,7 +181,7 @@ export default function HomePage() {
             ].map((step) => (
               <div key={step.step} className="flex flex-col items-center text-center">
                 <div className="relative mb-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-sky-500/20 ring-1 ring-violet-500/30">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500/20 to-sky-500/20 ring-1 ring-violet-500/30">
                     <step.icon className="h-7 w-7 text-violet-400" />
                   </div>
                   <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
