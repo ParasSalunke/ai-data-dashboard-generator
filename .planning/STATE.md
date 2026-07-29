@@ -31,5 +31,12 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 - OpenAI API key must be provided by user as environment variable `OPENAI_API_KEY`
 - Dataset storage uses `/tmp/datasets/{uuid}/` — no database required for MVP
 
+## Quick Tasks Completed
+
+| # | Description | Date | Directory |
+|---|-------------|------|-----------|
+| 260729-f81 | Fix TypeScript 7 compatibility issue in frontend | 2026-07-29 | [.planning/quick/260729-f81-fix-typescript-7-compatibility-issue-in-](./quick/260729-f81-fix-typescript-7-compatibility-issue-in-/) |
+
 ---
-*Last updated: 2026-03-28 after initialization*
+*Last updated: 2026-07-29 after completing quick task 260729-f81*
+
