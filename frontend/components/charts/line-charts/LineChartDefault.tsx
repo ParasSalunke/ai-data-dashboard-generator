@@ -1,6 +1,6 @@
 "use client"
 
-import { TrendingUp } from "lucide-react"
+import { TrendingUp, TrendingDown } from "lucide-react"
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts"
 
 import {
@@ -15,74 +15,73 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
 } from "@/components/ui/chart"
+import { DynamicChartProps } from "../area-charts/AreaChartGradient"
 
-export const description = "A line chart"
+export function LineChartDefault({
+  data,
+  config,
+  title,
+  description,
+  insightText,
+  insightSubText,
+  insightUp,
+  compact
+}: DynamicChartProps) {
+  const dataKey = Object.keys(config)[0] || "value"
 
-const chartData = [
-  { month: "January", desktop: 186 },
-  { month: "February", desktop: 305 },
-  { month: "March", desktop: 237 },
-  { month: "April", desktop: 73 },
-  { month: "May", desktop: 209 },
-  { month: "June", desktop: 214 },
-]
-
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig
-
-export function LineChartDefault() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Line Chart</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+    <Card className="h-full flex flex-col group relative overflow-hidden border-border/60 bg-card/60 backdrop-blur-sm transition-all duration-200 hover:border-border hover:shadow-md hover:shadow-black/20">
+      <CardHeader className="pb-4">
+        <CardTitle>{title || "Line Chart"}</CardTitle>
+        {!compact && <CardDescription>{description || "Line chart representation"}</CardDescription>}
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
+      <CardContent className="flex-1 pb-0">
+        <ChartContainer config={config} className="w-full" style={{ height: compact ? 160 : 250 }}>
           <LineChart
             accessibilityLayer
-            data={chartData}
+            data={data}
             margin={{
               left: 12,
               right: 12,
             }}
           >
-            <CartesianGrid vertical={false} />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
-              dataKey="month"
+              dataKey="date"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => String(value).slice(0, 10)}
             />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
             <Line
-              dataKey="desktop"
+              dataKey={dataKey}
               type="natural"
-              stroke="var(--color-desktop)"
+              stroke={`var(--color-${dataKey})`}
               strokeWidth={2}
-              dot={false}
+              dot={{ fill: `var(--color-${dataKey})` }}
+              activeDot={{ r: 6 }}
             />
           </LineChart>
         </ChartContainer>
       </CardContent>
-      <CardFooter className="flex-col items-start gap-2 text-sm">
-        <div className="flex gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
-        </div>
-        <div className="leading-none text-muted-foreground">
-          Showing total visitors for the last 6 months
-        </div>
-      </CardFooter>
+      {!compact && insightText && (
+        <CardFooter className="flex-col items-start gap-2 text-sm pt-4 border-t border-border/40 mt-4">
+          <div className="flex gap-2 leading-none font-medium">
+            {insightText}
+            {insightUp ? <TrendingUp className="h-4 w-4 text-emerald-500" /> : <TrendingDown className="h-4 w-4 text-rose-500" />}
+          </div>
+          {insightSubText && (
+            <div className="leading-none text-muted-foreground">
+              {insightSubText}
+            </div>
+          )}
+        </CardFooter>
+      )}
     </Card>
   )
 }

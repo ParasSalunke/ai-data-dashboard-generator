@@ -3,9 +3,9 @@ import { Analytics } from "@vercel/analytics/next"
 import { ClerkProvider } from '@clerk/nextjs'
 import { shadcn } from '@clerk/ui/themes'
 import { Inter } from 'next/font/google';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import QueryProvider from '@/components/providers/QueryProvider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -34,15 +34,17 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="min-h-screen bg-background font-sans antialiased">
         <ClerkProvider appearance={{ theme: shadcn }}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-          </ThemeProvider>
-          <Analytics />
+          <QueryProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
+            <Analytics />
+          </QueryProvider>
         </ClerkProvider>
       </body>
     </html>

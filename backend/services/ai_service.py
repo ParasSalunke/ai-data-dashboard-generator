@@ -22,12 +22,18 @@ class InsightsOutput(BaseModel):
 class AIService:
 
     def __init__(self) -> None:
+        self.mock_mode = str(os.getenv("MOCK_AI", "false")).lower() in ("true", "1", "yes", "on")
+        
         api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
-        if api_key and api_key != "your_gemini_api_key_here":
+        
+        if self.mock_mode:
+            self.client = None
+            logger.info("MOCK_AI enabled — AI features will use placeholders")
+        elif api_key and api_key != "your_gemini_api_key_here":
             try:
                 from google import genai
                 self.client: Any = genai.Client(api_key=api_key)
-                self._model = "gemini-2.5-flash-lite"
+                self._model = "gemini-3.8-flash"
                 logger.info(f"Gemini client initialized (model: {self._model})")
             except ImportError:
                 self.client = None
@@ -75,36 +81,58 @@ class AIService:
             logger.error(f"Gemini insights error: {e}")
             return self._placeholder_insights(dataset_summary)
 
-    async def answer_question(self, dataset_summary: dict, question: str) -> dict:
+    async def answer_question(self, dataset_summary: dict, question: str, raw_csv: str = None) -> dict:
         if not self.client:
+            msg = "AI Q&A requires GEMINI_API_KEY. Please set it in backend/.env.local"
             return {
-                "answer": "AI Q&A requires GEMINI_API_KEY. Please set it in backend/.env.local",
+                "answer": msg,
                 "chart": None,
             }
         try:
             from google.genai import types as genai_types
+            import tempfile
+            import os
 
             system = (
-                "You are a data analyst. Answer questions about the dataset using only "
-                "the statistics provided. Be concise and specific. Cite actual numbers. "
-                "Keep answers under 200 words."
+                "You are an expert data analyst. You have access to both dataset summary statistics and raw data. "
+                "Answer questions about the dataset as accurately as possible. If the question requires looking at "
+                "the raw data, do so. Cite actual numbers, find correlations, or point out specific rows if asked. "
+                "Be concise, specific, and highly accurate. Keep answers under 200 words."
             )
-            prompt = self._build_qa_prompt(dataset_summary, question)
+            # Use raw_csv as a file to prevent token limit errors
+            prompt = self._build_qa_prompt(dataset_summary, question, None)
+            contents = [prompt]
+            
+            uploaded_file = None
+            tmp_path = None
+            if raw_csv:
+                fd, tmp_path = tempfile.mkstemp(suffix=".csv")
+                with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                    f.write(raw_csv)
+                uploaded_file = self.client.files.upload(file=tmp_path)
+                contents.insert(0, uploaded_file)
 
-            response = self.client.models.generate_content(
-                model=self._model,
-                contents=prompt,
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=system,
-                    temperature=0.2,
-                    max_output_tokens=500,
-                ),
-            )
+            try:
+                response = self.client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=contents,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=system,
+                        temperature=0.2,
+                        max_output_tokens=500,
+                    ),
+                )
+            finally:
+                if uploaded_file:
+                    self.client.files.delete(name=uploaded_file.name)
+                if tmp_path and os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+
             return {"answer": response.text, "chart": None}
 
         except Exception as e:
             logger.error(f"Gemini Q&A error: {e}")
-            return {"answer": f"Unable to answer: {e}", "chart": None}
+            return {"answer": "sorry but i canot answer do to some problem", "chart": None}
 
     # ── prompt builders ────────────────────────────────────────────────────
 
@@ -132,7 +160,7 @@ class AIService:
         ]
         return "\n".join(lines)
 
-    def _build_qa_prompt(self, summary: dict, question: str) -> str:
+    def _build_qa_prompt(self, summary: dict, question: str, raw_csv: str = None) -> str:
         col_lines = []
         for col in summary.get("columns", []):
             line = f"  - {col['name']} ({col['dtype']})"
@@ -144,12 +172,20 @@ class AIService:
                 line += f": top values = {top}"
             col_lines.append(line)
 
-        return (
+        prompt = (
             f"Dataset: {summary.get('row_count', '?')} rows × {summary.get('col_count', '?')} columns\n"
             "Columns:\n" + "\n".join(col_lines) + "\n\n"
             f"Question: {question}\n\n"
-            "Answer based ONLY on the data above. Be concise."
         )
+        
+        if raw_csv:
+            prompt += "--- RAW DATA (FULL OR SAMPLE) ---\n"
+            prompt += raw_csv + "\n\n"
+            prompt += "Answer the user's question using the raw data provided above. Be accurate and concise."
+        else:
+            prompt += "Answer based ONLY on the data above. Be concise."
+            
+        return prompt
 
     def _placeholder_insights(self, summary: dict) -> list[dict]:
         cols = summary.get("columns", [])
@@ -228,15 +264,6 @@ class AIService:
                     "type": "trend",
                 })
 
-        # Pad if fewer than 5
-        if len(insights) < 5:
-            insights.append({
-                "title": "Set Up Gemini AI",
-                "content": (
-                    "Set GEMINI_API_KEY in backend/.env.local to unlock Gemini-powered insights "
-                    "with correlation analysis, anomaly detection, and tailored recommendations."
-                ),
-                "type": "recommendation",
-            })
+        # Pad if fewer than 5 (Removed placeholder recommendation)
 
         return insights[:5]

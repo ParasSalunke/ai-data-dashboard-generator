@@ -1,6 +1,6 @@
 "use client"
 
-import { TrendingUp } from "lucide-react"
+import { TrendingUp, TrendingDown } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 
 import {
@@ -17,59 +17,60 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { DynamicChartProps } from "../area-charts/AreaChartGradient"
 
-export const description = "A bar chart"
+export function BarChartDefault({
+  data,
+  config,
+  title,
+  description,
+  insightText,
+  insightSubText,
+  insightUp,
+  compact
+}: DynamicChartProps) {
+  const dataKey = Object.keys(config)[0] || "count"
+  // If data uses 'x' instead of 'category' (like histogram), find out
+  const xAxisKey = data.length > 0 && data[0].x !== undefined ? "x" : "category"
 
-const chartData = [
-  { month: "January", desktop: 186 },
-  { month: "February", desktop: 305 },
-  { month: "March", desktop: 237 },
-  { month: "April", desktop: 73 },
-  { month: "May", desktop: 209 },
-  { month: "June", desktop: 214 },
-]
-
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig
-
-export function BarChartDefault() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Bar Chart</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+    <Card className="h-full flex flex-col group relative overflow-hidden border-border/60 bg-card/60 backdrop-blur-sm transition-all duration-200 hover:border-border hover:shadow-md hover:shadow-black/20">
+      <CardHeader className="pb-4">
+        <CardTitle>{title || "Bar Chart"}</CardTitle>
+        {!compact && <CardDescription>{description || "Bar chart representation"}</CardDescription>}
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
-          <BarChart accessibilityLayer data={chartData}>
-            <CartesianGrid vertical={false} />
+      <CardContent className="flex-1 pb-0">
+        <ChartContainer config={config} className="w-full" style={{ height: compact ? 160 : 250 }}>
+          <BarChart accessibilityLayer data={data} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
-              dataKey="month"
+              dataKey={xAxisKey}
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => String(value).slice(0, 10)}
             />
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel />}
+              content={<ChartTooltipContent hideLabel={false} />}
             />
-            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={8} />
+            <Bar dataKey={dataKey} fill={`var(--color-${dataKey})`} radius={4} />
           </BarChart>
         </ChartContainer>
       </CardContent>
-      <CardFooter className="flex-col items-start gap-2 text-sm">
-        <div className="flex gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
-        </div>
-        <div className="leading-none text-muted-foreground">
-          Showing total visitors for the last 6 months
-        </div>
-      </CardFooter>
+      {!compact && insightText && (
+        <CardFooter className="flex-col items-start gap-2 text-sm pt-4 border-t border-border/40 mt-4">
+          <div className="flex gap-2 leading-none font-medium">
+            {insightText}
+            {insightUp ? <TrendingUp className="h-4 w-4 text-emerald-500" /> : <TrendingDown className="h-4 w-4 text-rose-500" />}
+          </div>
+          {insightSubText && (
+            <div className="leading-none text-muted-foreground">
+              {insightSubText}
+            </div>
+          )}
+        </CardFooter>
+      )}
     </Card>
   )
 }

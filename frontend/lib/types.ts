@@ -65,6 +65,7 @@ export interface ChartConfig {
     showLegend: boolean;
     showGrid: boolean;
     colors: string[];
+    variant?: string;
   };
 }
 

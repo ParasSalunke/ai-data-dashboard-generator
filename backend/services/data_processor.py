@@ -35,6 +35,70 @@ def _to_python(obj: Any) -> Any:
 
 class DataProcessor:
 
+    def _clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Automated data preprocessing pipeline: missing values, outliers, type casting."""
+        # 1. Column Standardization
+        df.columns = (
+            df.columns.str.strip()
+            .str.lower()
+            .str.replace(r'[^a-zA-Z0-9_]+', '_', regex=True)
+            .str.strip('_')
+        )
+
+        # 2. Row-Level Cleaning
+        df = df.dropna(how='all')
+        df = df.drop_duplicates()
+        df = df.copy()
+
+        # 3-5. Column-Level Cleaning
+        cols_to_drop = []
+        for col in df.columns:
+            dtype = self._infer_column_type(df[col])
+            
+            if dtype == "numeric":
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+                if df[col].isna().any():
+                    median = df[col].median()
+                    if pd.isna(median):
+                        median = 0
+                    df[col] = df[col].fillna(median)
+                    
+                # Outlier Handling (Winsorization)
+                if len(df) > 10:
+                    q1 = df[col].quantile(0.01)
+                    q99 = df[col].quantile(0.99)
+                    df[col] = df[col].clip(lower=q1, upper=q99)
+                    
+            elif dtype == "categorical":
+                if df[col].isna().any():
+                    df[col] = df[col].fillna("Unknown")
+                df[col] = df[col].astype(str)
+                    
+            elif dtype == "boolean":
+                bool_map = {"true": True, "1": True, "yes": True, "y": True, "false": False, "0": False, "no": False, "n": False, "unknown": False}
+                df[col] = df[col].astype(str).str.lower().str.strip().map(bool_map).fillna(False).astype(bool)
+                
+            elif dtype == "datetime":
+                parsed = pd.to_datetime(df[col], errors="coerce")
+                df[col] = parsed.dt.strftime('%Y-%m-%d')
+                df[col] = df[col].where(pd.notna(df[col]), None)
+                
+            elif dtype == "unknown":
+                cols_to_drop.append(col)
+
+        if cols_to_drop:
+            df = df.drop(columns=cols_to_drop)
+
+        # Parquet serialization requires consistent types in object columns
+        # Force any remaining object columns to be string (with None for nulls)
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                mask = df[col].isna()
+                df[col] = df[col].astype(str)
+                df.loc[mask, col] = None
+
+        return df
+
     def process_csv(self, csv_path: Path, dataset_dir: Path) -> dict:
         """Process uploaded CSV: detect encoding, parse, save as Parquet, return metadata."""
         # Detect encoding from first 10KB sample
@@ -50,6 +114,9 @@ class DataProcessor:
             df = pd.read_csv(csv_path, encoding=encoding, on_bad_lines="skip", low_memory=False)
         except (UnicodeDecodeError, Exception):
             df = pd.read_csv(csv_path, encoding="latin-1", on_bad_lines="skip", low_memory=False)
+
+        # Apply data cleaning pipeline
+        df = self._clean_dataframe(df)
 
         # Save as Parquet for fast subsequent reads
         parquet_path = dataset_dir / "data.parquet"

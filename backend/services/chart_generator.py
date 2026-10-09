@@ -1,4 +1,5 @@
 import math
+import random
 import logging
 import re
 from pathlib import Path
@@ -125,6 +126,13 @@ class ChartGenerator:
             radial = self._make_radialbar(df, radial_candidates[0], CHART_COLORS)
             if radial:
                 suggestions.append(radial)
+
+        # Stacked Area: Count by categorical grouping over time
+        cat_cols = [c for c, t in column_types.items() if t == "categorical"]
+        if datetime_cols and cat_cols:
+            stacked = self._make_stacked_area_chart(df, datetime_cols[0], cat_cols[0], CHART_COLORS)
+            if stacked:
+                suggestions.append(stacked)
 
         # Cap total charts at 14 to avoid overwhelming the dashboard
         return _to_python(suggestions[:14])
@@ -346,7 +354,13 @@ class ChartGenerator:
                 "column": value_col,
                 "x_column": date_col,
                 "data": data,
-                "options": {"responsive": True, "showLegend": True, "showGrid": True, "colors": [color]},
+                "options": {
+                    "responsive": True,
+                    "showLegend": True,
+                    "showGrid": True,
+                    "colors": [color],
+                    "variant": random.choice(["gradient", "linear", "step"]),
+                },
             }
         except Exception as e:
             logger.warning(f"Area chart failed for {value_col!r}: {e}")
@@ -442,5 +456,53 @@ class ChartGenerator:
             }
         except Exception as e:
             logger.warning(f"Radial bar failed for {col!r}: {e}")
+            return None
+
+    def _make_stacked_area_chart(
+        self, df: pd.DataFrame, date_col: str, cat_col: str, colors: list[str]
+    ) -> dict | None:
+        try:
+            tmp = df[[date_col, cat_col]].copy()
+            tmp[date_col] = pd.to_datetime(tmp[date_col], errors="coerce")
+            tmp = tmp.dropna()
+            if len(tmp) < 5:
+                return None
+            
+            # Keep top 4 categories max to prevent chart from being messy
+            top_cats = tmp[cat_col].value_counts().nlargest(4).index
+            tmp[cat_col] = tmp[cat_col].where(tmp[cat_col].isin(top_cats), "Other")
+            
+            # Resample by Month
+            grouped = tmp.groupby([pd.Grouper(key=date_col, freq="ME"), cat_col]).size().unstack(fill_value=0)
+            if grouped.empty:
+                return None
+            
+            data = []
+            for date_idx, row in grouped.iterrows():
+                item = {"date": str(date_idx)[:10]}
+                for c in grouped.columns:
+                    item[str(c)] = int(row[c])
+                data.append(item)
+            
+            y_cols = [str(c) for c in grouped.columns]
+            
+            return {
+                "id": f"area_stacked_{date_col}_{cat_col}",
+                "type": "area",
+                "title": f"Count by {cat_col.replace('_', ' ').title()} Over Time",
+                "column": cat_col,
+                "x_column": date_col,
+                "y_columns": y_cols,
+                "data": data,
+                "options": {
+                    "responsive": True,
+                    "showLegend": True,
+                    "showGrid": True,
+                    "colors": colors[:len(y_cols)],
+                    "variant": "stacked",
+                },
+            }
+        except Exception as e:
+            logger.warning(f"Stacked area failed for {date_col}, {cat_col}: {e}")
             return None
 

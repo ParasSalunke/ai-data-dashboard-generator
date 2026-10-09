@@ -1,14 +1,16 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
+import { UserButton } from '@clerk/nextjs';
 import { useQuery } from '@tanstack/react-query';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { analyzeDataset, getInsights, getPreview } from '@/lib/api';
 import { useDashboardStore } from '@/lib/store';
-import DashboardGrid from '@/components/DashboardGrid';
-import InsightPanel from '@/components/InsightPanel';
-import DataTable from '@/components/DataTable';
-import AskPanel from '@/components/AskPanel';
+import DashboardGrid from '@/components/dashboard/DashboardGrid';
+import InsightPanel from '@/components/insight-panel/InsightPanel';
+import DataTable from '@/components/data-table/DataTable';
+import AskPanel from '@/components/ask-panel/AskPanel';
+import FilterBar from '@/components/filter-bar/FilterBar';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,12 +18,15 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   BarChart3, Lightbulb, Table2, MessageSquare,
-  ArrowLeft, Moon, Sun, Database, Search, X,
+  ArrowLeft, Database, Search, X, FileDown,
+  PanelRightClose, PanelRightOpen,
+  Rows3, Columns3, TrendingUp, Hash,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import type { ChartConfig } from '@/lib/types';
+import ThemeToggleButton from '@/components/theme/ThemeToggleButton';
 
 const CHART_TYPE_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -45,8 +50,12 @@ export default function DashboardContent() {
   const datasetId = paramId || storeId;
 
   const [activeTab, setActiveTab] = useState('charts');
+  const [sidebarTab, setSidebarTab] = useState('insights');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chartFilter, setChartFilter] = useState('all');
   const [chartSearch, setChartSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const dashboardRef = useRef<HTMLDivElement>(null);
 
   // Fetch analysis (charts + summary stats)
   const analysisQuery = useQuery({
@@ -106,6 +115,64 @@ export default function DashboardContent() {
     return result;
   }, [charts, chartFilter, chartSearch]);
 
+  // Summary stats for overview cards
+  const summaryStats = useMemo(() => {
+    const stats = analysisQuery.data?.summary_stats ?? [];
+    const numericCols = stats.filter((s) => s.dtype === 'numeric');
+    const catCols = stats.filter((s) => s.dtype === 'categorical');
+    const dateCols = stats.filter((s) => s.dtype === 'datetime');
+    return { numericCols, catCols, dateCols, total: stats.length };
+  }, [analysisQuery.data]);
+
+  // PDF Export handler
+  const handleExportPDF = useCallback(async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const { toPng } = await import('html-to-image');
+      const { pdf } = await import('@react-pdf/renderer');
+      const { DashboardReportPDF } = await import('@/components/pdf/DashboardReportPDF');
+
+      const chartElements = document.querySelectorAll('.export-chart-card');
+      const chartImages = [];
+
+      for (const el of Array.from(chartElements)) {
+        const id = el.getAttribute('data-chart-export-id');
+        if (!id) continue;
+        
+        const chartConfig = charts.find(c => c.id === id);
+        if (!chartConfig) continue;
+
+        const dataUrl = await toPng(el as HTMLElement, {
+            backgroundColor: '#09090b',
+            pixelRatio: 2,
+        });
+        
+        chartImages.push({
+            id,
+            title: chartConfig.title,
+            dataUrl
+        });
+      }
+
+      const doc = <DashboardReportPDF totalRows={totalRows} columns={columnData.length} chartsCount={charts.length} chartImages={chartImages} />;
+      const asPdf = pdf();
+      asPdf.updateContainer(doc);
+      const blob = await asPdf.toBlob();
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'dashboard-report.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, totalRows, columnData.length, charts]);
+
   // Chart type counts for filter badges
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = { all: charts.length };
@@ -150,17 +217,22 @@ export default function DashboardContent() {
             )}
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 shrink-0 p-0"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            {theme === 'dark'
-              ? <Sun className="h-4 w-4 text-muted-foreground" />
-              : <Moon className="h-4 w-4 text-muted-foreground" />
-            }
-          </Button>
+          {/* Export PDF button */}
+          {charts.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={exporting}
+              className="h-8 gap-1.5 text-xs border-border/60 hidden sm:flex"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              {exporting ? 'Exporting…' : 'Export PDF'}
+            </Button>
+          )}
+
+          <ThemeToggleButton />
+          <UserButton />
         </div>
       </header>
 
@@ -182,10 +254,10 @@ export default function DashboardContent() {
       )}
 
       {/* ── Main layout ──────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-w-0 overflow-hidden">
 
-        {/* Left — Main content */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Left — Main content (min-w-0 prevents flex child from overflowing) */}
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full min-h-0 flex-col">
 
             {/* Tab bar + optional filter row (stacked on mobile, side-by-side on sm+) */}
@@ -270,11 +342,10 @@ export default function DashboardContent() {
                       <button
                         key={opt.value}
                         onClick={() => setChartFilter(opt.value)}
-                        className={`whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-medium transition-all ${
-                          chartFilter === opt.value
-                            ? 'bg-violet-500/20 text-violet-300'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
+                        className={`whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-medium transition-all ${chartFilter === opt.value
+                          ? 'bg-violet-500/20 text-violet-300'
+                          : 'text-muted-foreground hover:text-foreground'
+                          }`}
                       >
                         {opt.label}
                         {typeCounts[opt.value] ? (
@@ -289,76 +360,193 @@ export default function DashboardContent() {
               )}
             </div>
 
-            {/* Tab content — shadcn ScrollArea for styled themed scrollbar */}
-            <ScrollArea className="h-full flex-1 overflow-hidden">
-              <div className="p-4">
-                <TabsContent value="charts" className="mt-0">
-                  <DashboardGrid
-                    charts={filteredCharts}
-                    isLoading={analysisQuery.isLoading}
-                  />
-                  {analysisQuery.error && (
-                    <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-                      Failed to analyze dataset: {(analysisQuery.error as Error).message}
-                    </div>
-                  )}
-                  {!analysisQuery.isLoading && filteredCharts.length === 0 && charts.length > 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Search className="mb-3 h-8 w-8 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">No charts match your filter</p>
-                      <button
-                        onClick={() => { setChartFilter('all'); setChartSearch(''); }}
-                        className="mt-2 text-xs text-violet-400 hover:underline"
-                      >
-                        Clear filters
-                      </button>
-                    </div>
-                  )}
-                </TabsContent>
+            {/* Tab content */}
+            <div className="flex-1 min-h-0 overflow-hidden">
 
-                <TabsContent value="data" className="mt-0">
+              {/* Charts tab — vertical scroll only */}
+              <TabsContent value="charts" className="mt-0 h-full">
+                <ScrollArea className="h-full">
+                  <div ref={dashboardRef} className="p-4 space-y-4">
+                    {/* Summary overview cards */}
+                    {!analysisQuery.isLoading && totalRows > 0 && (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div className="rounded-xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Rows3 className="h-3.5 w-3.5" />
+                            <span className="text-[11px] font-medium">Total Rows</span>
+                          </div>
+                          <p className="text-lg font-bold text-foreground">{totalRows.toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Columns3 className="h-3.5 w-3.5" />
+                            <span className="text-[11px] font-medium">Columns</span>
+                          </div>
+                          <p className="text-lg font-bold text-foreground">{columnData.length}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {summaryStats.numericCols.length} numeric · {summaryStats.catCols.length} categorical
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <TrendingUp className="h-3.5 w-3.5" />
+                            <span className="text-[11px] font-medium">Charts</span>
+                          </div>
+                          <p className="text-lg font-bold text-foreground">{charts.length}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {new Set(charts.map(c => c.type)).size} types
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Hash className="h-3.5 w-3.5" />
+                            <span className="text-[11px] font-medium">Data Points</span>
+                          </div>
+                          <p className="text-lg font-bold text-foreground">
+                            {charts.reduce((sum, c) => sum + (c.data?.length || 0), 0).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Column-level filters */}
+                    {!analysisQuery.isLoading && columnData.length > 0 && (
+                      <FilterBar columns={columnData} charts={charts} />
+                    )}
+
+                    <DashboardGrid
+                      charts={filteredCharts}
+                      isLoading={analysisQuery.isLoading}
+                    />
+                    {analysisQuery.error && (
+                      <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+                        Failed to analyze dataset: {(analysisQuery.error as Error).message}
+                      </div>
+                    )}
+                    {!analysisQuery.isLoading && filteredCharts.length === 0 && charts.length > 0 && (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Search className="mb-3 h-8 w-8 text-muted-foreground/40" />
+                        <p className="text-sm text-muted-foreground">No charts match your filter</p>
+                        <button
+                          onClick={() => { setChartFilter('all'); setChartSearch(''); }}
+                          className="mt-2 text-xs text-violet-400 hover:underline"
+                        >
+                          Clear filters
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <ScrollBar orientation="vertical" />
+                </ScrollArea>
+              </TabsContent>
+
+              {/* Data tab — isolated scroll context so wide tables don't bleed into sidebar */}
+              <TabsContent value="data" className="mt-0 h-full">
+                <div className="h-full overflow-auto p-4">
                   <DataTable
                     data={previewData}
                     columns={columnData}
                     isLoading={analysisQuery.isLoading || previewQuery.isLoading}
                   />
-                </TabsContent>
+                </div>
+              </TabsContent>
 
-                {/* Mobile-only tabs */}
-                <TabsContent value="ask" className="mt-0 md:hidden">
-                  <div className="h-[calc(100dvh-175px)] sm:h-[calc(100dvh-155px)]">
-                    <AskPanel datasetId={datasetId} />
-                  </div>
-                </TabsContent>
-                <TabsContent value="insights" className="mt-0 md:hidden">
+              {/* Mobile-only tabs */}
+              <TabsContent value="ask" className="mt-0 h-full md:hidden">
+                <div className="h-[calc(100dvh-175px)] sm:h-[calc(100dvh-155px)]">
+                  <AskPanel datasetId={datasetId} />
+                </div>
+              </TabsContent>
+              <TabsContent value="insights" className="mt-0 h-full md:hidden">
+                <div className="h-full overflow-auto p-4">
                   <InsightPanel
                     insights={insights}
                     isLoading={insightsQuery.isLoading}
                     error={insightsQuery.error ? (insightsQuery.error as Error).message : null}
                   />
-                </TabsContent>
-              </div>
-              <ScrollBar orientation="vertical" />
-            </ScrollArea>
+                </div>
+              </TabsContent>
+
+            </div>
           </Tabs>
         </main>
 
-        {/* ── Right sidebar — desktop only ─────────────────────────────── */}
-        <aside className="hidden md:flex w-[340px] shrink-0 flex-col gap-0 border-l border-border/60 bg-card/30 overflow-hidden">
-          {/* AI Insights — flex-1 + min-h-0 so ScrollArea can scroll properly */}
-          <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-4">
-            <InsightPanel
-              insights={insights}
-              isLoading={insightsQuery.isLoading}
-              error={insightsQuery.error ? (insightsQuery.error as Error).message : null}
-            />
+        {/* ── Sidebar open button (visible when sidebar is closed) ──────── */}
+        {!sidebarOpen && (
+          <div className="hidden md:flex items-start pt-3 pr-2 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(true)}
+              className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+              title="Open panel"
+            >
+              <PanelRightOpen className="h-4 w-4" />
+            </Button>
           </div>
+        )}
 
-          <Separator className="shrink-0" />
+        {/* ── Right sidebar — desktop only ─────────────────────────────── */}
+        <aside
+          className={`hidden md:flex shrink-0 flex-col border-l border-border/60 bg-card/30 overflow-hidden transition-all duration-300 ease-in-out ${sidebarOpen ? 'w-[360px] opacity-100' : 'w-0 opacity-0 border-l-0'
+            }`}
+        >
+          <div className="flex h-full w-[360px] min-w-[360px] flex-col">
+            <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="flex h-full flex-col gap-0">
+              {/* Tab triggers + close button */}
+              <div className="shrink-0 border-b border-border/60 bg-card/40 px-2 pt-2 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <TabsList className="h-9 flex-1 bg-muted/50 p-0.5 rounded-lg">
+                    <TabsTrigger
+                      value="insights"
+                      className="h-full flex-1 rounded-md text-xs font-medium gap-1.5 transition-all data-active:bg-violet-500/15 data-active:text-violet-400 data-active:shadow-sm"
+                    >
+                      <Lightbulb className="h-3.5 w-3.5" />
+                      AI Insights
+                      {insights && insights.length > 0 && (
+                        <Badge variant="secondary" className="ml-0.5 h-4 px-1.5 text-[10px]">
+                          {insights.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="ask"
+                      className="h-full flex-1 rounded-md text-xs font-medium gap-1.5 transition-all data-active:bg-sky-500/15 data-active:text-sky-400 data-active:shadow-sm"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Ask Your Data
+                    </TabsTrigger>
+                  </TabsList>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarOpen(false)}
+                    className="h-8 w-8 shrink-0 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+                    title="Close panel"
+                  >
+                    <PanelRightClose className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
 
-          {/* Ask panel */}
-          <div className="flex h-[300px] min-h-0 shrink-0 flex-col p-4">
-            <AskPanel datasetId={datasetId} />
+              {/* Tab content — fills remaining height */}
+              <TabsContent value="insights" className="mt-0 flex-1 min-h-0 overflow-hidden">
+                <div className="flex h-full flex-col overflow-hidden p-4">
+                  <InsightPanel
+                    insights={insights}
+                    isLoading={insightsQuery.isLoading}
+                    error={insightsQuery.error ? (insightsQuery.error as Error).message : null}
+                    hideHeader
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="ask" className="mt-0 flex-1 min-h-0 overflow-hidden">
+                <div className="flex h-full flex-col overflow-hidden p-4">
+                  <AskPanel datasetId={datasetId} hideHeader />
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </aside>
       </div>
