@@ -33,7 +33,7 @@ import {
   ArrowLeft, Database, Search, X, FileDown,
   PanelRightClose, PanelRightOpen,
   Rows3, Columns3, TrendingUp, Hash,
-  LayoutGrid, Sparkles, Bookmark, Edit2, Check,
+  LayoutGrid, Sparkles, Bookmark, Edit2, Check, Lock,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -74,11 +74,13 @@ export default function DashboardContent() {
   } = useDashboardStore();
   const datasetId = paramId || storeId;
 
+  // Strict Authentication Guard: immediately clear state and redirect logged-out users
   useEffect(() => {
-    if (isLoaded && !isSignedIn && !datasetId) {
-      router.push('/');
+    if (isLoaded && !isSignedIn) {
+      useDashboardStore.getState().reset();
+      router.replace('/?auth=required');
     }
-  }, [isLoaded, isSignedIn, datasetId, router]);
+  }, [isLoaded, isSignedIn, router]);
 
   const [activeTab, setActiveTab] = useState('charts');
   const [chartView, setChartView] = useState<'showcase' | 'ai'>('showcase');
@@ -95,27 +97,27 @@ export default function DashboardContent() {
   const [savingTitle, setSavingTitle] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
-  // Fetch analysis (charts + summary stats)
+  // Fetch analysis (charts + summary stats) — only when authenticated
   const analysisQuery = useQuery({
     queryKey: ['analysis', datasetId],
     queryFn: () => analyzeDataset(datasetId!),
-    enabled: !!datasetId,
+    enabled: !!datasetId && isSignedIn,
     staleTime: Infinity,
   });
 
-  // Fetch insights (depends on analysis completing)
+  // Fetch insights (depends on analysis completing) — only when authenticated
   const insightsQuery = useQuery({
     queryKey: ['insights', datasetId],
     queryFn: () => getInsights(datasetId!),
-    enabled: !!datasetId && analysisQuery.isSuccess,
+    enabled: !!datasetId && analysisQuery.isSuccess && isSignedIn,
     staleTime: Infinity,
   });
 
-  // Fetch preview when store is empty (URL-based navigation)
+  // Fetch preview when store is empty (URL-based navigation) — only when authenticated
   const previewQuery = useQuery({
     queryKey: ['preview', datasetId],
     queryFn: () => getPreview(datasetId!),
-    enabled: !!datasetId && columns.length === 0,
+    enabled: !!datasetId && columns.length === 0 && isSignedIn,
     staleTime: Infinity,
   });
 
@@ -291,6 +293,50 @@ export default function DashboardContent() {
     }),
     [datasetId, currentTitle, totalRows, columnData, previewData, charts, insights, analysisQuery.data]
   );
+
+  // Authentication loading check
+  if (!isLoaded) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-500" />
+          <span className="text-sm">Verifying authentication…</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Strict Authentication Guard: Never render dashboard content to logged-out users
+  if (!isSignedIn) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background gap-4 px-4 text-center">
+        <div className="p-3.5 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 shadow-lg shadow-red-500/5">
+          <Lock className="h-8 w-8" />
+        </div>
+        <div className="space-y-1.5 max-w-sm">
+          <h3 className="text-xl font-bold text-foreground">Sign In Required</h3>
+          <p className="text-sm text-muted-foreground">
+            This dashboard is private and requires authentication. Please sign in to view analytics.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 pt-2">
+          <Button
+            onClick={() => openSignIn?.()}
+            className="gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-xs cursor-pointer"
+          >
+            Sign In to Continue
+          </Button>
+          <Button
+            variant="outline"
+            asChild
+            className="border-border/60"
+          >
+            <Link href="/">Back to Home</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // No dataset — show empty state
   if (!datasetId) {

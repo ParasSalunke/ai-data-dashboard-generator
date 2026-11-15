@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useDashboardStore } from '@/lib/store';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +21,7 @@ import { getUserSavedDashboards, MAX_SAVED_DASHBOARDS } from '@/lib/firestore';
 import SavedDashboardsModal from '@/components/dashboard/SavedDashboardsModal';
 
 export function UserButton({ className }: { className?: string }) {
+  const router = useRouter();
   const { user, signOut } = useAuth();
   const [savedCount, setSavedCount] = useState<number>(0);
   const [dashboardsModalOpen, setDashboardsModalOpen] = useState(false);
@@ -106,7 +110,10 @@ export function UserButton({ className }: { className?: string }) {
               className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
               onClick={async () => {
                 try {
+                  useDashboardStore.getState().reset();
                   await signOut();
+                  toast.success('Signed out successfully');
+                  router.push('/');
                 } catch (err) {
                   console.error('Failed to sign out:', err);
                 }

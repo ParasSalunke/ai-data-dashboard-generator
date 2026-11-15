@@ -218,6 +218,12 @@ export default function FileUpload({ onSuccess, className }: FileUploadProps) {
                 Max 100MB
               </Badge>
             </div>
+            {!isSignedIn && (
+              <div className="mt-3 flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">
+                <Lock className="h-3 w-3" />
+                <span>Sign in required to create & view dashboards</span>
+              </div>
+            )}
           </>
         )}
 

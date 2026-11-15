@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { auth } from './firebase';
 import type {
   UploadResponse,
   AnalyzeResponse,
@@ -26,8 +27,17 @@ export const api = axios.create({
   timeout: 120_000, // 2 min for large CSV + AI processing
 });
 
-// Request interceptor for logging
-api.interceptors.request.use((config) => {
+// Request interceptor to attach Firebase Auth token securely
+api.interceptors.request.use(async (config) => {
+  try {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const token = await currentUser.getIdToken();
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (err) {
+    console.error('Failed to attach auth token to request:', err);
+  }
   return config;
 });
 

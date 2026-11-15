@@ -1,6 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 import FileUpload from '@/components/file-upload/FileUpload';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,6 +62,18 @@ const stats = [
 
 export default function HomePage() {
   const router = useRouter();
+  const { isSignedIn, isLoaded, openSignIn } = useAuth();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('auth') === 'required' && !isSignedIn && isLoaded) {
+        openSignIn?.();
+        toast.info('Please sign in to access your dashboard');
+        window.history.replaceState({}, '', '/');
+      }
+    }
+  }, [isSignedIn, isLoaded, openSignIn]);
 
   const handleUploadSuccess = (datasetId: string) => {
     router.push(`/dashboard?id=${datasetId}`);

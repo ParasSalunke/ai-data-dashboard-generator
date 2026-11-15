@@ -3,11 +3,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith('/dashboard')) {
-    const hasDatasetId = req.nextUrl.searchParams.has('id');
+  // Protect all dashboard routes — require authentication
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     const userId = req.cookies.get('firebase_user_id')?.value;
-    if (!userId && !hasDatasetId) {
-      return NextResponse.redirect(new URL('/', req.url));
+    if (!userId) {
+      const loginUrl = new URL('/', req.url);
+      loginUrl.searchParams.set('auth', 'required');
+      return NextResponse.redirect(loginUrl);
     }
   }
 

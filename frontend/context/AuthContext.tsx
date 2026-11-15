@@ -31,10 +31,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function setAuthCookie(userId: string | null) {
   if (typeof document === 'undefined') return;
+  const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+  const secureFlag = isSecure ? '; Secure' : '';
   if (userId) {
-    document.cookie = `firebase_user_id=${userId}; path=/; max-age=604800; SameSite=Lax`;
+    document.cookie = `firebase_user_id=${userId}; path=/; max-age=604800; SameSite=Lax${secureFlag}`;
   } else {
-    document.cookie = `firebase_user_id=; path=/; max-age=0; SameSite=Lax`;
+    document.cookie = `firebase_user_id=; path=/; max-age=0; SameSite=Lax${secureFlag}`;
   }
 }
 
@@ -99,6 +101,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await firebaseSignOut(auth);
       setAuthCookie(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ai-dashboard-store');
+      }
     } catch (error) {
       console.error('Sign-out error:', error);
       throw error;
