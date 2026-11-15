@@ -34,6 +34,60 @@
       }
     },
     {
+      "source": "/docs",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/redoc",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/openapi.json",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/health",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/upload",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/analyze",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/preview",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/insights",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/ask",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
       "source": "/(.*)",
       "destination": {
         "service": "frontend"
