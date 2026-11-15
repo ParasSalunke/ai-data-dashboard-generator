@@ -53,11 +53,11 @@ export default function AskPanel({ datasetId, hideHeader }: AskPanelProps) {
         { role: 'assistant', content: data.answer, chart: data.chart },
       ]);
       if (user) {
-        saveChatMessage(user.uid, datasetId, { role: 'user', content: variables }).catch((err) =>
+        saveChatMessage(user.uid, datasetId, { role: 'user', content: variables }).catch((err: any) =>
           console.error('Failed to save user chat to Firestore:', err)
         );
         saveChatMessage(user.uid, datasetId, { role: 'assistant', content: data.answer }).catch(
-          (err) => console.error('Failed to save assistant chat to Firestore:', err)
+          (err: any) => console.error('Failed to save assistant chat to Firestore:', err)
         );
       }
       inputRef.current?.focus();

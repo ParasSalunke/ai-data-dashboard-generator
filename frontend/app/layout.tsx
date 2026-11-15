@@ -5,6 +5,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import QueryProvider from '@/components/providers/QueryProvider';
 import AuthProvider from '@/components/auth/AuthProvider';
+import { Toaster } from 'sonner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -41,6 +42,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               {children}
+              <Toaster richColors position="top-right" />
             </ThemeProvider>
             <Analytics />
           </QueryProvider>

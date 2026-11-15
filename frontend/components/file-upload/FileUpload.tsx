@@ -3,7 +3,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { saveDatasetRecord } from '@/lib/firestore';
 import AuthControl from '@/components/auth/AuthControl';
 import { uploadCSV } from '@/lib/api';
 import { useDashboardStore } from '@/lib/store';
@@ -77,17 +76,6 @@ export default function FileUpload({ onSuccess, className }: FileUploadProps) {
         setColumns(response.columns);
         setPreview(response.preview);
         setRowCount(response.row_count);
-
-        if (user) {
-          saveDatasetRecord(user.uid, {
-            id: response.dataset_id,
-            fileName: file.name,
-            rowCount: response.row_count,
-            columnCount: response.columns.length,
-            columns: response.columns,
-            preview: response.preview,
-          }).catch((err) => console.error('Failed to save to Firestore:', err));
-        }
 
         setUploadState('success');
         setProgress(100);

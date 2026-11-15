@@ -3,7 +3,14 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import UserButton from '@/components/auth/UserButton';
 import { useAuth } from '@/context/AuthContext';
-import { updateDatasetAnalysis } from '@/lib/firestore';
+import {
+  getUserSavedDashboards,
+  getSavedDashboard,
+  updateDashboardTitle,
+  MAX_SAVED_DASHBOARDS,
+  type FirestoreDataset,
+  type SaveDashboardPayload,
+} from '@/lib/firestore';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { analyzeDataset, getInsights, getPreview } from '@/lib/api';
@@ -14,6 +21,8 @@ import InsightPanel from '@/components/insight-panel/InsightPanel';
 import DataTable from '@/components/data-table/DataTable';
 import AskPanel from '@/components/ask-panel/AskPanel';
 import FilterBar from '@/components/filter-bar/FilterBar';
+import SaveDashboardDialog from '@/components/dashboard/SaveDashboardDialog';
+import SavedDashboardsModal from '@/components/dashboard/SavedDashboardsModal';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,12 +33,13 @@ import {
   ArrowLeft, Database, Search, X, FileDown,
   PanelRightClose, PanelRightOpen,
   Rows3, Columns3, TrendingUp, Hash,
-  LayoutGrid, Sparkles,
+  LayoutGrid, Sparkles, Bookmark, Edit2, Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import type { ChartConfig, Insight } from '@/lib/types';
 import ThemeToggleButton from '@/components/theme/ThemeToggleButton';
+import { toast } from 'sonner';
 
 const CHART_TYPE_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -47,10 +57,21 @@ const CHART_TYPE_OPTIONS = [
 export default function DashboardContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const { isSignedIn, isLoaded, user } = useAuth();
+  const { isSignedIn, isLoaded, user, openSignIn } = useAuth();
   const paramId = params.get('id');
 
-  const { datasetId: storeId, fileName: storeFileName, columns, preview, rowCount } = useDashboardStore();
+  const {
+    datasetId: storeId,
+    fileName: storeFileName,
+    columns,
+    preview,
+    rowCount,
+    setFileName,
+    setColumns,
+    setPreview,
+    setRowCount,
+    setChartOrder,
+  } = useDashboardStore();
   const datasetId = paramId || storeId;
 
   useEffect(() => {
@@ -66,6 +87,12 @@ export default function DashboardContent() {
   const [chartFilter, setChartFilter] = useState('all');
   const [chartSearch, setChartSearch] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [manageModalOpen, setManageModalOpen] = useState(false);
+  const [userDashboards, setUserDashboards] = useState<FirestoreDataset[]>([]);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [savingTitle, setSavingTitle] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   // Fetch analysis (charts + summary stats)
@@ -92,23 +119,40 @@ export default function DashboardContent() {
     staleTime: Infinity,
   });
 
-  // Sync analysis results and insights to Firestore (only with defined fields)
-  useEffect(() => {
-    if (user && datasetId && (analysisQuery.data || insightsQuery.data)) {
-      const updatePayload: { charts?: ChartConfig[]; insights?: Insight[] } = {};
-      if (analysisQuery.data?.chart_suggestions) {
-        updatePayload.charts = analysisQuery.data.chart_suggestions;
-      }
-      if (insightsQuery.data?.insights) {
-        updatePayload.insights = insightsQuery.data.insights;
-      }
-      if (Object.keys(updatePayload).length > 0) {
-        updateDatasetAnalysis(user.uid, datasetId, updatePayload).catch((err) =>
-          console.error('Failed to update Firestore analysis:', err)
-        );
-      }
+  // Fetch user's saved dashboards to track quota and save state
+  const refreshUserDashboards = useCallback(async () => {
+    if (!user) {
+      setUserDashboards([]);
+      return;
     }
-  }, [user, datasetId, analysisQuery.data, insightsQuery.data]);
+    try {
+      const list = await getUserSavedDashboards(user.uid);
+      setUserDashboards(list);
+    } catch (err) {
+      console.error('Failed to load user dashboards:', err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refreshUserDashboards();
+  }, [refreshUserDashboards]);
+
+  // Fallback hydration from Firestore when opening saved dashboard directly
+  useEffect(() => {
+    if (user && datasetId && columns.length === 0) {
+      getSavedDashboard(user.uid, datasetId)
+        .then((saved) => {
+          if (saved) {
+            if (saved.columns?.length) setColumns(saved.columns);
+            if (saved.preview?.length) setPreview(saved.preview);
+            if (saved.rowCount) setRowCount(saved.rowCount);
+            if (saved.fileName) setFileName(saved.fileName);
+            if (saved.chartOrder?.length) setChartOrder(saved.chartOrder);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [user, datasetId, columns.length, setColumns, setPreview, setRowCount, setFileName, setChartOrder]);
 
   const charts = useMemo(
     () => analysisQuery.data?.chart_suggestions ?? [],
@@ -120,6 +164,39 @@ export default function DashboardContent() {
   const columnData = columns.length ? columns : (previewQuery.data?.columns ?? []);
   const previewData = preview.length ? preview : (previewQuery.data?.preview ?? []);
   const totalRows = rowCount || previewQuery.data?.row_count || 0;
+
+  const currentSavedDoc = useMemo(
+    () => userDashboards.find((d) => d.id === datasetId),
+    [userDashboards, datasetId]
+  );
+  const isSaved = !!currentSavedDoc;
+  const currentTitle = storeFileName || currentSavedDoc?.fileName || previewQuery.data?.fileName || 'Dashboard';
+
+  useEffect(() => {
+    if (!isEditingTitle) {
+      setEditedTitle(currentTitle);
+    }
+  }, [currentTitle, isEditingTitle]);
+
+  const handleSaveInlineTitle = async () => {
+    if (!editedTitle.trim()) return;
+    const newTitle = editedTitle.trim();
+    setSavingTitle(true);
+    try {
+      setFileName(newTitle);
+      if (user && datasetId && isSaved) {
+        await updateDashboardTitle(user.uid, datasetId, newTitle);
+        await refreshUserDashboards();
+        toast.success('Dashboard renamed successfully');
+      }
+      setIsEditingTitle(false);
+    } catch (err) {
+      console.error('Failed to rename dashboard:', err);
+      toast.error('Failed to rename dashboard');
+    } finally {
+      setSavingTitle(false);
+    }
+  };
 
   // Filter + search charts
   const filteredCharts = useMemo<ChartConfig[]>(() => {
@@ -199,6 +276,22 @@ export default function DashboardContent() {
     return counts;
   }, [charts]);
 
+  const savePayload: SaveDashboardPayload = useMemo(
+    () => ({
+      id: datasetId || '',
+      fileName: currentTitle,
+      rowCount: totalRows,
+      columnCount: columnData.length,
+      columns: columnData,
+      preview: previewData,
+      charts: charts,
+      insights: insights || [],
+      chartOrder: useDashboardStore.getState().chartOrder || [],
+      summaryStats: analysisQuery.data?.summary_stats || [],
+    }),
+    [datasetId, currentTitle, totalRows, columnData, previewData, charts, insights, analysisQuery.data]
+  );
+
   // No dataset — show empty state
   if (!datasetId) {
     return (
@@ -227,7 +320,71 @@ export default function DashboardContent() {
           <Separator orientation="vertical" className="h-5 shrink-0" />
           <div className="flex min-w-0 items-center gap-1.5">
             <BarChart3 className="h-4 w-4 shrink-0 text-violet-400" />
-            <span className="truncate text-sm font-semibold text-foreground">Dashboard</span>
+            {isEditingTitle ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="h-7 text-xs px-2 py-0 w-32 sm:w-48 bg-card border-violet-500/50"
+                  autoFocus
+                  disabled={savingTitle}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter') handleSaveInlineTitle();
+                    if (e.key === 'Escape') setIsEditingTitle(false);
+                  }}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleSaveInlineTitle}
+                  disabled={savingTitle || !editedTitle.trim()}
+                  className="h-7 w-7 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 cursor-pointer"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsEditingTitle(false);
+                    setEditedTitle(currentTitle);
+                  }}
+                  disabled={savingTitle}
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="group flex items-center gap-1.5 min-w-0">
+                <span
+                  title="Click to rename"
+                  onClick={() => {
+                    setEditedTitle(currentTitle);
+                    setIsEditingTitle(true);
+                  }}
+                  className="truncate text-sm font-semibold text-foreground max-w-[110px] sm:max-w-[200px] md:max-w-[260px] cursor-pointer hover:text-violet-400 transition-colors"
+                >
+                  {currentTitle}
+                </span>
+                {isSaved && (
+                  <Badge variant="outline" className="hidden sm:inline-flex text-[10px] py-0 px-1 border-violet-500/30 text-violet-400 bg-violet-500/10 font-normal">
+                    Saved
+                  </Badge>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditedTitle(currentTitle);
+                    setIsEditingTitle(true);
+                  }}
+                  title="Rename dashboard"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-foreground rounded cursor-pointer"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -246,6 +403,32 @@ export default function DashboardContent() {
               </Badge>
             )}
           </div>
+
+          {/* Save Dashboard button */}
+          <Button
+            variant={isSaved ? "outline" : "default"}
+            size="sm"
+            onClick={() => {
+              if (!isSignedIn) {
+                openSignIn?.();
+                toast.info('Please sign in to save your dashboard');
+                return;
+              }
+              setSaveDialogOpen(true);
+            }}
+            className={`h-8 gap-1.5 text-xs ${
+              isSaved
+                ? 'border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20'
+                : 'bg-violet-600 hover:bg-violet-700 text-white shadow-xs'
+            }`}
+          >
+            <Bookmark className="h-3.5 w-3.5" />
+            <span className="hidden xs:inline">{isSaved ? 'Save Changes' : 'Save'}</span>
+            <span className="xs:hidden">{isSaved ? 'Update' : 'Save'}</span>
+            <span className="text-[10px] opacity-75 font-normal">
+              ({userDashboards.length}/{MAX_SAVED_DASHBOARDS})
+            </span>
+          </Button>
 
           {/* Export PDF button */}
           {charts.length > 0 && (
@@ -628,6 +811,40 @@ export default function DashboardContent() {
           </div>
         </aside>
       </div>
+
+      {/* Save Dashboard Dialog */}
+      {datasetId && (
+        <SaveDashboardDialog
+          open={saveDialogOpen}
+          onOpenChange={setSaveDialogOpen}
+          payload={savePayload}
+          savedDashboards={userDashboards}
+          onSaveSuccess={(updatedName) => {
+            setFileName(updatedName);
+            refreshUserDashboards();
+          }}
+          onOpenManageModal={() => setManageModalOpen(true)}
+        />
+      )}
+
+      {/* Saved Dashboards Management Modal */}
+      <SavedDashboardsModal
+        open={manageModalOpen}
+        onOpenChange={(open) => {
+          setManageModalOpen(open);
+          if (!open) refreshUserDashboards();
+        }}
+        onDashboardSelect={(dataset) => {
+          if (dataset.id !== datasetId) {
+            if (dataset.columns?.length) setColumns(dataset.columns);
+            if (dataset.preview?.length) setPreview(dataset.preview);
+            if (dataset.rowCount) setRowCount(dataset.rowCount);
+            if (dataset.fileName) setFileName(dataset.fileName);
+            if (dataset.chartOrder?.length) setChartOrder(dataset.chartOrder);
+            router.push(`/dashboard?id=${dataset.id}`);
+          }
+        }}
+      />
     </div>
   );
 }
