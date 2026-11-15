@@ -91,41 +91,9 @@
 
 ## 🏗️ System Architecture & Data Flow
 
-```mermaid
-flowchart TD
-    subgraph Client["Frontend (Next.js 16 + Tailwind CSS 4)"]
-        UI["Landing & Upload UI"]
-        DASH["Sortable Dashboard Grid"]
-        AUTH["Firebase Auth & Firestore"]
-        PDF["PDF Generator"]
-    end
-
-    subgraph Edge["Vercel Platform Routing (vercel.json)"]
-        ROUTER{"Top-Level Ingress Rewrites"}
-    end
-
-    subgraph Server["Backend Service (FastAPI + Python 3.10)"]
-        API["FastAPI Endpoints"]
-        PROC["DataProcessor (Pandas + PyArrow)"]
-        CHART["ChartGenerator (Heuristics Engine)"]
-        AI["AIService (Google Gemini API)"]
-        STORAGE[("Temporary Parquet Storage (/tmp)")]
-    end
-
-    UI -->|Upload CSV| ROUTER
-    DASH -->|Analyze / Preview / Q&A| ROUTER
-    AUTH <-->|User Profile & Dataset Sync| CloudFirestore[(Google Cloud Firestore)]
-
-    ROUTER -->|/api/backend/*, /upload, /analyze, /docs| API
-    ROUTER -->|/(.*) Frontend Pages| UI
-
-    API --> PROC
-    PROC -->|Save/Load Columnar Data| STORAGE
-    PROC --> CHART
-    CHART -->|Chart Configurations| API
-    PROC --> AI
-    AI -->|Generate Insights & Q&A| GoogleGemini[("Google Gemini AI API")]
-```
+<p align="center">
+  <img src="mermaid-diagram.svg" alt="Datovo System Architecture & Data Flow" width="100%" />
+</p>
 
 ---
 

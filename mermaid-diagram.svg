@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1061.2704166666667 1280.011" width="1061.2704166666667" height="1280.011" style="--bg:#18181B;--fg:#F4F4F5;--line:#71717A;--muted:#A1A1AA;--surface:#27272A;--border:#3F3F46;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+  <marker id="arrowhead" markerWidth="8" markerHeight="5" refX="7" refY="2.5" orient="auto">
+    <polygon points="0 0, 8 2.5, 0 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+  <marker id="arrowhead-start" markerWidth="8" markerHeight="5" refX="1" refY="2.5" orient="auto-start-reverse">
+    <polygon points="8 0, 0 2.5, 8 5" fill="var(--_arrow)" stroke="var(--_arrow)" stroke-width="0.75" stroke-linejoin="round" />
+  </marker>
+</defs>
+<g class="subgraph" data-id="Client" data-label="Frontend (Next.js 16 + Tailwind CSS 4)">
+  <rect x="152.18091666666658" y="58" width="788.421" height="96.9" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="152.18091666666658" y="58" width="788.421" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="164.18091666666658" y="72" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">Frontend (Next.js 16 + Tailwind CSS 4)</text>
+</g>
+<g class="subgraph" data-id="Edge" data-label="Vercel Platform Routing (vercel.json)">
+  <rect x="437.01374999999985" y="283.20000000000005" width="261.711" height="289.711" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="437.01374999999985" y="283.20000000000005" width="261.711" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="449.01374999999985" y="297.20000000000005" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">Vercel Platform Routing (vercel.json)</text>
+</g>
+<g class="subgraph" data-id="Server" data-label="Backend Service (FastAPI + Python 3.10)">
+  <rect x="40" y="701.211" width="739.8919999999998" height="365.6" rx="0" ry="0" fill="var(--_group-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="40" y="701.211" width="739.8919999999998" height="28" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="52" y="715.211" font-size="12" font-weight="600" fill="var(--_text-sec)" dy="4.199999999999999">Backend Service (FastAPI + Python 3.10)</text>
+</g>
+<polyline class="edge" data-from="UI" data-to="ROUTER" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Upload CSV" points="623.6034166666666,138.9 623.6034166666667,196.9 620.78025,196.9 620.78025,265.20000000000005 606.1544166666666,265.20000000000005 606.1544166666665,365.4851666666667" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="DASH" data-to="ROUTER" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Analyze / Preview / Q&amp;A" points="262.5149166666666,138.9 262.51491666666675,196.9 514.9582499999999,196.9 514.9582499999999,265.20000000000005 529.5840833333333,265.20000000000005 529.5840833333332,365.4851666666667" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="AUTH" data-to="CloudFirestore" data-style="solid" data-arrow-start="true" data-arrow-end="true" data-label="User Profile &amp; Dataset Sync" points="827.6744166666666,138.9 827.6744166666666,552.0110000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" marker-start="url(#arrowhead-start)" />
+<polyline class="edge" data-from="ROUTER" data-to="API" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="/api/backend/*, /upload, /analyze, /docs" points="529.5840833333332,518.6258333333334 529.5840833333332,745.211" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="ROUTER" data-to="UI" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="/(.*) Frontend Pages" points="606.1544166666665,518.6258333333334 606.1544166666665,614.9110000000001 961.6284166666666,614.9110000000001 961.6284166666666,40 623.6034166666666,40 623.6034166666666,102.00000000000003" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="AI" data-to="GoogleGemini" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Generate Insights &amp; Q&amp;A" points="378.4194999999999,951.9110000000001 378.41949999999997,1189.1109999999999" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="API" data-to="PROC" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="504.4379166666665,782.111 504.4379166666665,794.111 378.4194999999999,794.111 378.4194999999999,830.111" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="PROC" data-to="STORAGE" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Save/Load Columnar Data" points="314.7652499999999,867.011 314.7652499999999,879.011 176.269,879.011 176.26899999999998,999.9110000000001" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="PROC" data-to="CHART" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="442.0737499999999,867.011 442.0737499999999,879.011 597.6053333333332,879.011 597.6053333333332,915.011" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="CHART" data-to="API" data-style="solid" data-arrow-start="false" data-arrow-end="true" data-label="Chart Configurations" points="680.7486666666665,915.011 680.7486666666665,794.111 554.7302499999998,794.111 554.7302499999998,782.111" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<polyline class="edge" data-from="PROC" data-to="AI" data-style="solid" data-arrow-start="false" data-arrow-end="true" points="378.4194999999999,867.011 378.4194999999999,915.011" fill="none" stroke="var(--_line)" stroke-width="1" marker-end="url(#arrowhead)" />
+<g class="edge-label" data-from="UI" data-to="ROUTER" data-label="Upload CSV">
+  <rect x="583.2802499999998" y="203.9" width="74.07999999999998" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="620.3202499999998" y="219.05" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Upload CSV</text>
+</g>
+<g class="edge-label" data-from="DASH" data-to="ROUTER" data-label="Analyze / Preview / Q&amp;A">
+  <rect x="449.95824999999974" y="203.9" width="129.322" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="514.6192499999997" y="219.05" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Analyze / Preview / Q&amp;A</text>
+</g>
+<g class="edge-label" data-from="AUTH" data-to="CloudFirestore" data-label="User Profile &amp; Dataset Sync">
+  <rect x="754.6744166666665" y="478.711" width="145.95400000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="827.6514166666665" y="493.861" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">User Profile &amp; Dataset Sync</text>
+</g>
+<g class="edge-label" data-from="ROUTER" data-to="API" data-label="/api/backend/*, /upload, /analyze, /docs">
+  <rect x="427.58408333333324" y="621.9110000000001" width="203.572" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="529.3700833333332" y="637.061" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">/api/backend/*, /upload, /analyze, /docs</text>
+</g>
+<g class="edge-label" data-from="ROUTER" data-to="UI" data-label="/(.*) Frontend Pages">
+  <rect x="904.6284166666666" y="478.711" width="113.28400000000002" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="961.2704166666666" y="493.861" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">/(.*) Frontend Pages</text>
+</g>
+<g class="edge-label" data-from="AI" data-to="GoogleGemini" data-label="Generate Insights &amp; Q&amp;A">
+  <rect x="313.4195000000001" y="1115.811" width="129.91600000000003" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="378.3775000000001" y="1130.961" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Generate Insights &amp; Q&amp;A</text>
+</g>
+<g class="edge-label" data-from="PROC" data-to="STORAGE" data-label="Save/Load Columnar Data">
+  <rect x="105.76899999999998" y="918.311" width="140.608" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="176.07299999999998" y="933.461" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Save/Load Columnar Data</text>
+</g>
+<g class="edge-label" data-from="CHART" data-to="API" data-label="Chart Configurations">
+  <rect x="623.2486666666665" y="833.4110000000001" width="114.47200000000004" height="30.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="1" />
+  <text x="680.4846666666665" y="848.561" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-sec)" dy="3.8499999999999996">Chart Configurations</text>
+</g>
+<g class="node" data-id="CloudFirestore" data-label="Google Cloud Firestore" data-shape="cylinder">
+  <rect x="738.5274166666666" y="559.0110000000001" width="178.29399999999998" height="36.900000000000006" fill="var(--_node-fill)" stroke="none" />
+  <line x1="738.5274166666666" y1="559.0110000000001" x2="738.5274166666666" y2="595.9110000000001" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <line x1="916.8214166666666" y1="559.0110000000001" x2="916.8214166666666" y2="595.9110000000001" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <ellipse cx="827.6744166666665" cy="595.9110000000001" rx="89.14699999999999" ry="7" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <ellipse cx="827.6744166666665" cy="559.0110000000001" rx="89.14699999999999" ry="7" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="827.6744166666665" y="577.4610000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Google Cloud Firestore</text>
+</g>
+<g class="node" data-id="GoogleGemini" data-label="Google Gemini AI API" data-shape="cylinder">
+  <rect x="297.794" y="1196.1109999999999" width="161.251" height="36.900000000000006" fill="var(--_node-fill)" stroke="none" />
+  <line x1="297.794" y1="1196.1109999999999" x2="297.794" y2="1233.011" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <line x1="459.04499999999996" y1="1196.1109999999999" x2="459.04499999999996" y2="1233.011" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <ellipse cx="378.41949999999997" cy="1233.011" rx="80.6255" ry="7" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <ellipse cx="378.41949999999997" cy="1196.1109999999999" rx="80.6255" ry="7" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="378.41949999999997" y="1214.561" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Google Gemini AI API</text>
+</g>
+<g class="node" data-id="UI" data-label="Landing &amp; Upload UI" data-shape="rectangle">
+  <rect x="544.4599166666666" y="102" width="158.287" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="623.6034166666666" y="120.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Landing &amp; Upload UI</text>
+</g>
+<g class="node" data-id="DASH" data-label="Sortable Dashboard Grid" data-shape="rectangle">
+  <rect x="168.18091666666658" y="102" width="188.668" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="262.5149166666666" y="120.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Sortable Dashboard Grid</text>
+</g>
+<g class="node" data-id="AUTH" data-label="Firebase Auth &amp; Firestore" data-shape="rectangle">
+  <rect x="730.7469166666666" y="102" width="193.85500000000002" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="827.6744166666666" y="120.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Firebase Auth &amp; Firestore</text>
+</g>
+<g class="node" data-id="PDF" data-label="PDF Generator" data-shape="rectangle">
+  <rect x="384.8489166666666" y="102" width="131.611" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="450.6544166666666" y="120.45" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">PDF Generator</text>
+</g>
+<g class="node" data-id="ROUTER" data-label="Top-Level Ingress Rewrites" data-shape="diamond">
+  <polygon points="567.8692499999999,327.20000000000005 682.7247499999999,442.05550000000005 567.8692499999999,556.9110000000001 453.01374999999985,442.05550000000005" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="567.8692499999999" y="442.05550000000005" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Top-Level Ingress Rewrites</text>
+</g>
+<g class="node" data-id="API" data-label="FastAPI Endpoints" data-shape="rectangle">
+  <rect x="454.1455833333332" y="745.211" width="150.877" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="529.5840833333332" y="763.6610000000001" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">FastAPI Endpoints</text>
+</g>
+<g class="node" data-id="PROC" data-label="DataProcessor (Pandas + PyArrow)" data-shape="rectangle">
+  <rect x="251.11099999999993" y="830.111" width="254.61699999999996" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="378.4194999999999" y="848.561" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">DataProcessor (Pandas + PyArrow)</text>
+</g>
+<g class="node" data-id="CHART" data-label="ChartGenerator (Heuristics Engine)" data-shape="rectangle">
+  <rect x="514.4619999999999" y="915.011" width="249.42999999999995" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="639.1769999999999" y="933.461" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">ChartGenerator (Heuristics Engine)</text>
+</g>
+<g class="node" data-id="AI" data-label="AIService (Google Gemini API)" data-shape="rectangle">
+  <rect x="270.37699999999995" y="915.011" width="216.08499999999992" height="36.900000000000006" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="378.4194999999999" y="933.461" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">AIService (Google Gemini API)</text>
+</g>
+<g class="node" data-id="STORAGE" data-label="Temporary Parquet Storage (/tmp)" data-shape="cylinder">
+  <rect x="56" y="1006.9110000000001" width="240.53799999999995" height="36.900000000000006" fill="var(--_node-fill)" stroke="none" />
+  <line x1="56" y1="1006.9110000000001" x2="56" y2="1043.8110000000001" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <line x1="296.53799999999995" y1="1006.9110000000001" x2="296.53799999999995" y2="1043.8110000000001" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <ellipse cx="176.26899999999998" cy="1043.8110000000001" rx="120.26899999999998" ry="7" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <ellipse cx="176.26899999999998" cy="1006.9110000000001" rx="120.26899999999998" ry="7" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <text x="176.26899999999998" y="1025.361" text-anchor="middle" font-size="13" font-weight="500" fill="var(--_text)" dy="4.55">Temporary Parquet Storage (/tmp)</text>
+</g>
+</svg>
