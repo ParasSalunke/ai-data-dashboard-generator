@@ -14,6 +14,7 @@ export interface UploadResponse {
   row_count: number;
   col_count: number;
   file_size_bytes: number;
+  fileName?: string;
 }
 
 export interface PreviewResponse {
@@ -22,6 +23,7 @@ export interface PreviewResponse {
   preview: Record<string, unknown>[];
   row_count: number;
   col_count: number;
+  fileName?: string;
 }
 
 export interface SummaryStats {

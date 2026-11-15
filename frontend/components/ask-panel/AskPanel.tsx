@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { askQuestion } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import { saveChatMessage } from '@/lib/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,6 +33,7 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function AskPanel({ datasetId, hideHeader }: AskPanelProps) {
+  const { user } = useAuth();
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -49,6 +52,14 @@ export default function AskPanel({ datasetId, hideHeader }: AskPanelProps) {
         { role: 'user', content: variables },
         { role: 'assistant', content: data.answer, chart: data.chart },
       ]);
+      if (user) {
+        saveChatMessage(user.uid, datasetId, { role: 'user', content: variables }).catch((err) =>
+          console.error('Failed to save user chat to Firestore:', err)
+        );
+        saveChatMessage(user.uid, datasetId, { role: 'assistant', content: data.answer }).catch(
+          (err) => console.error('Failed to save assistant chat to Firestore:', err)
+        );
+      }
       inputRef.current?.focus();
     },
     onError: (err: Error, variables: string) => {

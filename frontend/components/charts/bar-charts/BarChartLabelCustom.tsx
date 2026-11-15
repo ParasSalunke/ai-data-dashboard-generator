@@ -17,10 +17,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import type { DynamicChartProps } from "../types"
 
 export const description = "A bar chart with a custom label"
 
-const chartData = [
+const defaultChartData = [
   { month: "January", desktop: 186, mobile: 80 },
   { month: "February", desktop: 305, mobile: 200 },
   { month: "March", desktop: 237, mobile: 120 },
@@ -29,7 +30,7 @@ const chartData = [
   { month: "June", desktop: 214, mobile: 140 },
 ]
 
-const chartConfig = {
+const defaultChartConfig = {
   desktop: {
     label: "Desktop",
     color: "var(--chart-2)",
@@ -43,12 +44,22 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function BarChartLabelCustom() {
+export function BarChartLabelCustom({
+  data,
+  config,
+  title,
+  description: customDesc,
+  insightText,
+  insightSubText,
+  insightUp,
+}: DynamicChartProps = {}) {
+  const chartData = data && data.length > 0 ? data : defaultChartData
+  const chartConfig = config || defaultChartConfig
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Bar Chart - Custom Label</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>{title || "Bar Chart - Custom Label"}</CardTitle>
+        <CardDescription>{customDesc || "January - June 2024"}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
@@ -96,7 +107,7 @@ export function BarChartLabelCustom() {
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+          {insightText || "Trending up by 5.2% this month"}<TrendingUp className="h-4 w-4" />
         </div>
         <div className="leading-none text-muted-foreground">
           Showing total visitors for the last 6 months

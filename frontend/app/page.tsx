@@ -18,6 +18,7 @@ import {
 import { PieChartDefault } from '@/components/charts/pie-charts/PieChartDefault';
 import ThemeToggleButton from '@/components/theme/ThemeToggleButton';
 import AuthControl from '@/components/auth/AuthControl';
+import RecentDatasets from '@/components/dashboard/RecentDatasets';
 
 const features = [
   {
@@ -133,8 +134,11 @@ export default function HomePage() {
           </div>
 
           <p className="mt-4 text-sm text-muted-foreground">
-            Supports CSV files up to 100MB · Data processed locally · No account required
+            Supports CSV files up to 100MB · Securely stored in Firestore · Instant AI charts
           </p>
+
+          {/* Recent user datasets from Firestore */}
+          <RecentDatasets />
         </div>
       </div>
 

@@ -38,6 +38,7 @@ class UploadResponse(BaseModel):
     row_count: int
     col_count: int
     file_size_bytes: int
+    fileName: str | None = None
 
 
 @router.post("/upload", response_model=UploadResponse)
@@ -83,6 +84,15 @@ async def upload_csv(file: UploadFile = File(...)):
             lambda: processor.process_csv(csv_path, dataset_dir)
         )
 
+        original_filename = file.filename or "dataset.csv"
+        try:
+            (dataset_dir / "meta.json").write_text(
+                json.dumps({"fileName": original_filename}),
+                encoding="utf-8"
+            )
+        except Exception as e:
+            logger.warning(f"Could not save meta.json: {e}")
+
         resp = UploadResponse(
             dataset_id=dataset_id,
             columns=[ColumnInfo(**col) for col in result["columns"]],
@@ -90,8 +100,9 @@ async def upload_csv(file: UploadFile = File(...)):
             row_count=result["row_count"],
             col_count=result["col_count"],
             file_size_bytes=file_size,
+            fileName=original_filename,
         )
-        logger.info(f"Upload completed successfully for {dataset_id}")
+        logger.info(f"Upload completed successfully for {dataset_id} ({original_filename})")
         return resp
 
     except HTTPException:

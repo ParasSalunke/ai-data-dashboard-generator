@@ -5,6 +5,7 @@ import type { ColumnInfo, ChartConfig } from './types';
 interface DashboardStore {
   // Dataset state
   datasetId: string | null;
+  fileName: string | null;
   columns: ColumnInfo[];
   preview: Record<string, unknown>[];
   rowCount: number;
@@ -20,6 +21,7 @@ interface DashboardStore {
 
   // Actions
   setDatasetId: (id: string) => void;
+  setFileName: (name: string) => void;
   setColumns: (cols: ColumnInfo[]) => void;
   setPreview: (rows: Record<string, unknown>[]) => void;
   setRowCount: (n: number) => void;
@@ -32,6 +34,7 @@ interface DashboardStore {
 
 const initialState = {
   datasetId: null,
+  fileName: null,
   columns: [],
   preview: [],
   rowCount: 0,
@@ -46,6 +49,7 @@ export const useDashboardStore = create<DashboardStore>()(
       ...initialState,
 
       setDatasetId: (id) => set({ datasetId: id }),
+      setFileName: (name) => set({ fileName: name }),
       setColumns: (cols) => set({ columns: cols }),
       setPreview: (rows) => set({ preview: rows }),
       setRowCount: (n) => set({ rowCount: n }),
@@ -72,6 +76,7 @@ export const useDashboardStore = create<DashboardStore>()(
       name: 'ai-dashboard-store',
       partialize: (state) => ({
         datasetId: state.datasetId,
+        fileName: state.fileName,
         chartOrder: state.chartOrder,
         sidebarOpen: state.sidebarOpen,
       }),

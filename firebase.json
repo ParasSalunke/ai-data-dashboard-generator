@@ -1,0 +1,19 @@
+{
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Datovo",
+        "authorizedRedirectUris": [
+          "https://datovo-v1.firebaseapp.com/__/auth/handler",
+          "http://localhost:3000",
+          "http://localhost:3001"
+        ]
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

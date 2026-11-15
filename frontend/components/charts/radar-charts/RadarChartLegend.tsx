@@ -19,10 +19,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import type { DynamicChartProps } from "../types"
 
 export const description = "A radar chart with a legend"
 
-const chartData = [
+const defaultChartData = [
   { month: "January", desktop: 186, mobile: 80 },
   { month: "February", desktop: 305, mobile: 200 },
   { month: "March", desktop: 237, mobile: 120 },
@@ -31,7 +32,7 @@ const chartData = [
   { month: "June", desktop: 214, mobile: 140 },
 ]
 
-const chartConfig = {
+const defaultChartConfig = {
   desktop: {
     label: "Desktop",
     color: "var(--chart-1)",
@@ -42,14 +43,22 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function RadarChartLegend() {
+export function RadarChartLegend({
+  data,
+  config,
+  title,
+  description: customDesc,
+  insightText,
+  insightSubText,
+  insightUp,
+}: DynamicChartProps = {}) {
+  const chartData = data && data.length > 0 ? data : defaultChartData
+  const chartConfig = config || defaultChartConfig
   return (
     <Card>
       <CardHeader className="items-center">
-        <CardTitle>Radar Chart - Legend</CardTitle>
-        <CardDescription>
-          Showing total visitors for the last 6 months
-        </CardDescription>
+        <CardTitle>{title || "Radar Chart - Legend"}</CardTitle>
+        <CardDescription>{customDesc || "Showing total visitors for the last 6 months"}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer
@@ -77,13 +86,13 @@ export function RadarChartLegend() {
               fillOpacity={0.6}
             />
             <Radar dataKey="mobile" fill="var(--color-mobile)" />
-            <ChartLegend className="mt-8" content={<ChartLegendContent />} />
+            <ChartLegend content={<ChartLegendContent className="mt-8" />} />
           </RadarChart>
         </ChartContainer>
       </CardContent>
       <CardFooter className="flex-col gap-2 pt-4 text-sm">
         <div className="flex items-center gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+          {insightText || "Trending up by 5.2% this month"}<TrendingUp className="h-4 w-4" />
         </div>
         <div className="flex items-center gap-2 leading-none text-muted-foreground">
           January - June 2024

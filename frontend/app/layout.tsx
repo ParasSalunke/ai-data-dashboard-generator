@@ -1,11 +1,10 @@
 import type { Metadata } from 'next';
-import { Analytics } from "@vercel/analytics/next"
-import { ClerkProvider } from '@clerk/nextjs'
-import { shadcn } from '@clerk/ui/themes'
+import { Analytics } from "@vercel/analytics/next";
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import QueryProvider from '@/components/providers/QueryProvider';
+import AuthProvider from '@/components/auth/AuthProvider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -33,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <ClerkProvider appearance={{ theme: shadcn }}>
+        <AuthProvider>
           <QueryProvider>
             <ThemeProvider
               attribute="class"
@@ -45,7 +44,7 @@ export default function RootLayout({
             </ThemeProvider>
             <Analytics />
           </QueryProvider>
-        </ClerkProvider>
+        </AuthProvider>
       </body>
     </html>
   );

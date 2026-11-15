@@ -2,23 +2,33 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
     "frontend": {
-      "root": "frontend",
-      "framework": "nextjs"
+      "root": "frontend"
     },
     "backend": {
       "root": "backend",
-      "framework": "fastapi",
       "entrypoint": "main:app",
       "functions": {
         "main.py": {
           "maxDuration": 120
         }
-      }
+      },
+      "rewrites": [
+        {
+          "source": "/api/backend/:path(.*)?",
+          "destination": "/:path"
+        }
+      ]
     }
   },
   "rewrites": [
     {
-      "source": "/api/backend(/.*)?",
+      "source": "/api/backend/:path*",
+      "destination": {
+        "service": "backend"
+      }
+    },
+    {
+      "source": "/api/backend",
       "destination": {
         "service": "backend"
       }

@@ -17,10 +17,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import type { DynamicChartProps } from "../types"
 
 export const description = "A pie chart with a custom label"
 
-const chartData = [
+const defaultChartData = [
   { browser: "chrome", visitors: 275, fill: "var(--color-chrome)" },
   { browser: "safari", visitors: 200, fill: "var(--color-safari)" },
   { browser: "firefox", visitors: 187, fill: "var(--color-firefox)" },
@@ -28,7 +29,7 @@ const chartData = [
   { browser: "other", visitors: 90, fill: "var(--color-other)" },
 ]
 
-const chartConfig = {
+const defaultChartConfig = {
   visitors: {
     label: "Visitors",
   },
@@ -54,12 +55,22 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function PieChartCustomLabel() {
+export function PieChartCustomLabel({
+  data,
+  config,
+  title,
+  description: customDesc,
+  insightText,
+  insightSubText,
+  insightUp,
+}: DynamicChartProps = {}) {
+  const chartData = data && data.length > 0 ? data : defaultChartData
+  const chartConfig = config || defaultChartConfig
   return (
     <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
-        <CardTitle>Pie Chart - Custom Label</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>{title || "Pie Chart - Custom Label"}</CardTitle>
+        <CardDescription>{customDesc || "January - June 2024"}</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
@@ -96,7 +107,7 @@ export function PieChartCustomLabel() {
       </CardContent>
       <CardFooter className="flex-col gap-2 text-sm">
         <div className="flex items-center gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+          {insightText || "Trending up by 5.2% this month"}<TrendingUp className="h-4 w-4" />
         </div>
         <div className="leading-none text-muted-foreground">
           Showing total visitors for the last 6 months

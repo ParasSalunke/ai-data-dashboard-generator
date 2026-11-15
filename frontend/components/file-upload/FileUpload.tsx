@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useClerk } from '@clerk/nextjs';
+import { useAuth } from '@/context/AuthContext';
+import { saveDatasetRecord } from '@/lib/firestore';
 import AuthControl from '@/components/auth/AuthControl';
 import { uploadCSV } from '@/lib/api';
 import { useDashboardStore } from '@/lib/store';
@@ -26,9 +27,8 @@ function formatBytes(bytes: number): string {
 
 export default function FileUpload({ onSuccess, className }: FileUploadProps) {
   const router = useRouter();
-  const { isSignedIn } = useUser();
-  const { openSignIn } = useClerk();
-  const { setDatasetId, setColumns, setPreview, setRowCount } = useDashboardStore();
+  const { isSignedIn, openSignIn, user } = useAuth();
+  const { setDatasetId, setFileName, setColumns, setPreview, setRowCount } = useDashboardStore();
 
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -73,9 +73,21 @@ export default function FileUpload({ onSuccess, className }: FileUploadProps) {
         const response = await uploadCSV(file, (pct) => setProgress(pct));
 
         setDatasetId(response.dataset_id);
+        setFileName(file.name);
         setColumns(response.columns);
         setPreview(response.preview);
         setRowCount(response.row_count);
+
+        if (user) {
+          saveDatasetRecord(user.uid, {
+            id: response.dataset_id,
+            fileName: file.name,
+            rowCount: response.row_count,
+            columnCount: response.columns.length,
+            columns: response.columns,
+            preview: response.preview,
+          }).catch((err) => console.error('Failed to save to Firestore:', err));
+        }
 
         setUploadState('success');
         setProgress(100);
@@ -95,7 +107,7 @@ export default function FileUpload({ onSuccess, className }: FileUploadProps) {
         setProgress(0);
       }
     },
-    [router, setDatasetId, setColumns, setPreview, setRowCount, onSuccess, isSignedIn, openSignIn]
+    [router, setDatasetId, setColumns, setPreview, setRowCount, onSuccess, isSignedIn, openSignIn, user]
   );
 
   const onDragOver = useCallback((e: React.DragEvent) => {

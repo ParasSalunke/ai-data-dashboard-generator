@@ -17,10 +17,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import type { DynamicChartProps } from "../types"
 
 export const description = "A radar chart with dots"
 
-const chartData = [
+const defaultChartData = [
   { month: "January", desktop: 186 },
   { month: "February", desktop: 305 },
   { month: "March", desktop: 237 },
@@ -29,21 +30,29 @@ const chartData = [
   { month: "June", desktop: 214 },
 ]
 
-const chartConfig = {
+const defaultChartConfig = {
   desktop: {
     label: "Desktop",
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig
 
-export function RadarChartDots() {
+export function RadarChartDots({
+  data,
+  config,
+  title,
+  description: customDesc,
+  insightText,
+  insightSubText,
+  insightUp,
+}: DynamicChartProps = {}) {
+  const chartData = data && data.length > 0 ? data : defaultChartData
+  const chartConfig = config || defaultChartConfig
   return (
     <Card>
       <CardHeader className="items-center">
-        <CardTitle>Radar Chart - Dots</CardTitle>
-        <CardDescription>
-          Showing total visitors for the last 6 months
-        </CardDescription>
+        <CardTitle>{title || "Radar Chart - Dots"}</CardTitle>
+        <CardDescription>{customDesc || "Showing total visitors for the last 6 months"}</CardDescription>
       </CardHeader>
       <CardContent className="pb-0">
         <ChartContainer
@@ -68,7 +77,7 @@ export function RadarChartDots() {
       </CardContent>
       <CardFooter className="flex-col gap-2 text-sm">
         <div className="flex items-center gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+          {insightText || "Trending up by 5.2% this month"}<TrendingUp className="h-4 w-4" />
         </div>
         <div className="flex items-center gap-2 leading-none text-muted-foreground">
           January - June 2024

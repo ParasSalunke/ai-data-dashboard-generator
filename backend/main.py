@@ -81,8 +81,16 @@ app.include_router(upload.router, tags=["upload"])
 app.include_router(analyze.router, tags=["analyze"])
 app.include_router(insights.router, tags=["insights"])
 
+# Also support /api/backend prefix directly if forwarded unstripped by any proxy
+app.include_router(upload.router, prefix="/api/backend", tags=["upload"])
+app.include_router(analyze.router, prefix="/api/backend", tags=["analyze"])
+app.include_router(insights.router, prefix="/api/backend", tags=["insights"])
 
+
+@app.get("/", tags=["health"])
 @app.get("/health", tags=["health"])
+@app.get("/api/backend", tags=["health"])
+@app.get("/api/backend/health", tags=["health"])
 async def health_check():
     storage_path = Path(os.getenv("DATASET_STORAGE_PATH", "/tmp/datasets"))
     return {

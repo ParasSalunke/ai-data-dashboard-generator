@@ -17,10 +17,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import type { DynamicChartProps } from "../types"
 
 export const description = "A multiple line chart"
 
-const chartData = [
+const defaultChartData = [
   { month: "January", desktop: 186, mobile: 80 },
   { month: "February", desktop: 305, mobile: 200 },
   { month: "March", desktop: 237, mobile: 120 },
@@ -29,7 +30,7 @@ const chartData = [
   { month: "June", desktop: 214, mobile: 140 },
 ]
 
-const chartConfig = {
+const defaultChartConfig = {
   desktop: {
     label: "Desktop",
     color: "var(--chart-1)",
@@ -40,12 +41,22 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function LineChartMultiple() {
+export function LineChartMultiple({
+  data,
+  config,
+  title,
+  description: customDesc,
+  insightText,
+  insightSubText,
+  insightUp,
+}: DynamicChartProps = {}) {
+  const chartData = data && data.length > 0 ? data : defaultChartData
+  const chartConfig = config || defaultChartConfig
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Line Chart - Multiple</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>{title || "Line Chart - Multiple"}</CardTitle>
+        <CardDescription>{customDesc || "January - June 2024"}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
@@ -87,7 +98,7 @@ export function LineChartMultiple() {
         <div className="flex w-full items-start gap-2 text-sm">
           <div className="grid gap-2">
             <div className="flex items-center gap-2 leading-none font-medium">
-              Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+              {insightText || "Trending up by 5.2% this month"}<TrendingUp className="h-4 w-4" />
             </div>
             <div className="flex items-center gap-2 leading-none text-muted-foreground">
               Showing total visitors for the last 6 months

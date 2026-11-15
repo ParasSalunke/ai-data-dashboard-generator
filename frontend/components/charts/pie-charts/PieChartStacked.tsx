@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { TrendingUp } from "lucide-react"
-import { Label, Pie, PieChart } from "recharts"
+import { Pie, PieChart } from "recharts"
 
 import {
   Card,
@@ -18,10 +18,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import type { DynamicChartProps } from "../types"
 
 export const description = "A pie chart with stacked sections"
 
-const desktopData = [
+const defaultDesktopData = [
   { month: "january", desktop: 186, fill: "var(--color-january)" },
   { month: "february", desktop: 305, fill: "var(--color-february)" },
   { month: "march", desktop: 237, fill: "var(--color-march)" },
@@ -29,7 +30,7 @@ const desktopData = [
   { month: "may", desktop: 209, fill: "var(--color-may)" },
 ]
 
-const mobileData = [
+const defaultMobileData = [
   { month: "january", mobile: 80, fill: "var(--color-january)" },
   { month: "february", mobile: 200, fill: "var(--color-february)" },
   { month: "march", mobile: 120, fill: "var(--color-march)" },
@@ -37,7 +38,7 @@ const mobileData = [
   { month: "may", mobile: 130, fill: "var(--color-may)" },
 ]
 
-const chartConfig = {
+const defaultChartConfig = {
   visitors: {
     label: "Visitors",
   },
@@ -69,37 +70,53 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function PieChartStacked() {
+export function PieChartStacked({
+  data,
+  config,
+  title,
+  description: customDesc,
+  insightText,
+}: DynamicChartProps = {}) {
+  const chartData = data && data.length > 0 ? data : defaultDesktopData
+  const activeConfig = config || defaultChartConfig
+
+  // Generate an inner ring from chartData or default
+  const innerData = React.useMemo(() => {
+    if (data && data.length > 0) {
+      return data.map((d: any) => ({
+        ...d,
+        visitors: Math.round((d.visitors || d.value || 100) * 0.6),
+      }))
+    }
+    return defaultMobileData
+  }, [data])
+
+  const valKey = (chartData[0] as any)?.visitors !== undefined ? "visitors" : (chartData[0] as any)?.desktop !== undefined ? "desktop" : "value"
+
   return (
     <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
-        <CardTitle>Pie Chart - Stacked</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>{title || "Pie Chart - Stacked"}</CardTitle>
+        <CardDescription>{customDesc || "January - June 2024"}</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
-          config={chartConfig}
-          className="mx-auto aspect-square max-h-62.5"
+          config={activeConfig}
+          className="mx-auto aspect-square max-h-[250px]"
         >
           <PieChart>
             <ChartTooltip
               content={
                 <ChartTooltipContent
                   labelKey="visitors"
-                  nameKey="month"
-                  indicator="line"
-                  labelFormatter={(_, payload) => {
-                    return chartConfig[
-                      payload?.[0].dataKey as keyof typeof chartConfig
-                    ].label
-                  }}
+                  nameKey="browser"
                 />
               }
             />
-            <Pie data={desktopData} dataKey="desktop" outerRadius={60} />
+            <Pie data={chartData} dataKey={valKey} outerRadius={60} />
             <Pie
-              data={mobileData}
-              dataKey="mobile"
+              data={innerData}
+              dataKey={valKey === "visitors" ? "visitors" : "mobile"}
               innerRadius={70}
               outerRadius={90}
             />
@@ -108,10 +125,10 @@ export function PieChartStacked() {
       </CardContent>
       <CardFooter className="flex-col gap-2 text-sm">
         <div className="flex items-center gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+          {insightText || "Trending up by 5.2% this month"} <TrendingUp className="h-4 w-4" />
         </div>
         <div className="leading-none text-muted-foreground">
-          Showing total visitors for the last 6 months
+          Showing distribution across categories
         </div>
       </CardFooter>
     </Card>

@@ -68,4 +68,4 @@ print(f"    Insights count: {len(insights['insights'])}")
 for ins in insights["insights"]:
     print(f"      [{ins['type']}] {ins['title']}")
 
-print("\n✅ ALL TESTS PASSED")
+print("\n[SUCCESS] ALL TESTS PASSED")

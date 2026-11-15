@@ -1,0 +1,241 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}
+    // Document ID: userId (matches auth.uid)
+    // Fields:
+    //   - uid: string (required, immutable) - Must match authenticated user UID
+    //   - email: string (required, 1..254 chars, RFC 5321 email format) - User's email
+    //   - displayName: string (optional, 0..100 chars) - User's display name
+    //   - photoURL: string (optional, 0..1000 chars, http/https URL) - Avatar image URL
+    //   - createdAt: timestamp (required, immutable) - Account registration timestamp
+    //   - updatedAt: timestamp (required) - Profile last update timestamp
+    //
+    // Collection: users/{userId}/datasets/{datasetId}
+    // Document ID: datasetId (UUID or unique dataset identifier)
+    // Fields:
+    //   - id: string (required, immutable) - Must match datasetId
+    //   - userId: string (required, immutable) - Must match userId and auth.uid
+    //   - fileName: string (required, 1..255 chars) - Name of uploaded CSV file
+    //   - rowCount: int (required, >= 0) - Number of parsed data rows
+    //   - colCount: int (optional, >= 0) - Number of columns in dataset
+    //   - fileSizeBytes: int (optional, >= 0) - CSV file size in bytes
+    //   - chartOrder: list (optional, max 100 items) - Saved order of chart IDs
+    //   - columns: list (optional, max 200 items) - Metadata for dataset columns
+    //   - summaryStats: list (optional, max 200 items) - Column summary statistics
+    //   - insights: list (optional, max 50 items) - AI-generated business insights
+    //   - status: string (optional, max 50 chars) - Dataset processing status
+    //   - createdAt: timestamp (required, immutable) - Dataset creation timestamp
+    //   - updatedAt: timestamp (optional) - Dataset last modified timestamp
+    //
+    // Collection: users/{userId}/datasets/{datasetId}/messages/{messageId}
+    // Document ID: messageId (unique message identifier)
+    // Fields:
+    //   - role: string (required, enum: 'user' | 'assistant') - Message sender role
+    //   - content: string (required, 1..20000 chars) - Chat message content
+    //   - timestamp: timestamp (required, immutable) - Creation timestamp
+    //   - id: string (optional, immutable) - Message document ID
+    //   - chart: map (optional) - Chart specification generated with answer
+    //   - isError: bool (optional) - Whether the message represents an error
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Verify user is authenticated with Firebase Auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Verify user is authenticated and matches the specified userId path parameter
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Verify that all required fields are present in the request data
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Verify that ONLY permitted fields exist in the request data (strict schema enforcement)
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Verify that immutable fields remain untouched during update operations
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate email format and RFC 5321 length limits
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() > 3 &&
+        email.size() <= 254 &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // Validate URL format (http/https) and realistic length bound
+    function isValidUrl(url) {
+      return url is string &&
+        url.size() <= 1000 &&
+        (url == '' || url.matches('^https://.*') || url.matches('^http://.*'));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function userAllowedFields() {
+      return ['uid', 'email', 'displayName', 'photoURL', 'createdAt', 'updatedAt'];
+    }
+
+    function datasetAllowedFields() {
+      return [
+        'id', 'userId', 'fileName', 'rowCount', 'colCount', 'columnCount',
+        'fileSizeBytes', 'chartOrder', 'columns', 'preview', 'summaryStats',
+        'charts', 'insights', 'status', 'createdAt', 'updatedAt'
+      ];
+    }
+
+    function messageAllowedFields() {
+      return ['id', 'role', 'content', 'timestamp', 'chart', 'isError'];
+    }
+
+    // Domain validator for users/{userId}
+    function isValidUser(data, userId) {
+      return data.uid is string &&
+        data.uid == userId &&
+        data.uid == request.auth.uid &&
+        (data.email == null || isValidEmail(data.email)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
+        (!('photoURL' in data) || data.photoURL == null || isValidUrl(data.photoURL));
+    }
+
+    // Domain validator for users/{userId}/datasets/{datasetId}
+    function isValidDataset(data, datasetId, userId) {
+      return data.id is string &&
+        data.id == datasetId &&
+        data.id.size() >= 1 &&
+        data.id.size() <= 128 &&
+        data.userId is string &&
+        data.userId == userId &&
+        data.userId == request.auth.uid &&
+        data.fileName is string &&
+        data.fileName.size() >= 1 &&
+        data.fileName.size() <= 255 &&
+        data.rowCount is int &&
+        data.rowCount >= 0 &&
+        data.createdAt is timestamp &&
+        (!('colCount' in data) || (data.colCount is int && data.colCount >= 0)) &&
+        (!('columnCount' in data) || (data.columnCount is int && data.columnCount >= 0)) &&
+        (!('fileSizeBytes' in data) || (data.fileSizeBytes is int && data.fileSizeBytes >= 0)) &&
+        (!('chartOrder' in data) || (data.chartOrder is list && data.chartOrder.size() <= 100)) &&
+        (!('columns' in data) || (data.columns is list && data.columns.size() <= 200)) &&
+        (!('preview' in data) || (data.preview is list && data.preview.size() <= 200)) &&
+        (!('summaryStats' in data) || (data.summaryStats is list && data.summaryStats.size() <= 200)) &&
+        (!('charts' in data) || (data.charts is list && data.charts.size() <= 100)) &&
+        (!('insights' in data) || (data.insights is list && data.insights.size() <= 50)) &&
+        (!('status' in data) || (data.status is string && data.status.size() <= 50)) &&
+        (!('updatedAt' in data) || (data.updatedAt is timestamp));
+    }
+
+    // Domain validator for users/{userId}/datasets/{datasetId}/messages/{messageId}
+    function isValidMessage(data, messageId) {
+      return data.role is string &&
+        (data.role == 'user' || data.role == 'assistant') &&
+        data.content is string &&
+        data.content.size() >= 1 &&
+        data.content.size() <= 20000 &&
+        data.timestamp is timestamp &&
+        (!('id' in data) || (data.id is string && (data.id == messageId || data.id.size() <= 128))) &&
+        (!('chart' in data) || data.chart == null || (data.chart is map)) &&
+        (!('isError' in data) || (data.isError is bool));
+    }
+
+    // ===============================================================
+    // Security Rules
+    // ===============================================================
+
+    // Root-level default deny for all collections not explicitly matched
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      // Authenticated users can read only their own profile (protects PII)
+      allow read: if isOwner(userId);
+
+      // Authenticated user can create their own profile document
+      allow create: if isOwner(userId) &&
+        hasRequiredFields(['uid', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(userAllowedFields()) &&
+        isValidUser(request.resource.data, userId);
+
+      // Authenticated user can update their own profile; uid and createdAt are immutable
+      allow update: if isOwner(userId) &&
+        hasRequiredFields(['uid', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(userAllowedFields()) &&
+        isValidUser(request.resource.data, userId) &&
+        areImmutableFieldsUnchanged(['uid', 'createdAt']);
+
+      // Authenticated user can delete their own profile
+      allow delete: if isOwner(userId);
+
+      // 2. Datasets Collection (Subcollection of users)
+      match /datasets/{datasetId} {
+        // Authenticated owner can read their own datasets
+        allow read: if isOwner(userId);
+
+        // Authenticated owner can create a dataset under their account
+        allow create: if isOwner(userId) &&
+          hasRequiredFields(['id', 'userId', 'fileName', 'rowCount', 'createdAt']) &&
+          hasOnlyAllowedFields(datasetAllowedFields()) &&
+          isValidDataset(request.resource.data, datasetId, userId);
+
+        // Authenticated owner can update their dataset; id, userId, and createdAt are immutable
+        allow update: if isOwner(userId) &&
+          hasRequiredFields(['id', 'userId', 'fileName', 'rowCount', 'createdAt']) &&
+          hasOnlyAllowedFields(datasetAllowedFields()) &&
+          isValidDataset(request.resource.data, datasetId, userId) &&
+          areImmutableFieldsUnchanged(['id', 'userId', 'createdAt']);
+
+        // Authenticated owner can delete their dataset
+        allow delete: if isOwner(userId);
+
+        // 3. Dataset Chat Messages Subcollection
+        match /messages/{messageId} {
+          // Authenticated owner can read chat messages for their dataset
+          allow read: if isOwner(userId);
+
+          // Authenticated owner can create chat messages
+          allow create: if isOwner(userId) &&
+            hasRequiredFields(['role', 'content', 'timestamp']) &&
+            hasOnlyAllowedFields(messageAllowedFields()) &&
+            isValidMessage(request.resource.data, messageId);
+
+          // Authenticated owner can update chat messages; timestamp and role are immutable
+          allow update: if isOwner(userId) &&
+            hasRequiredFields(['role', 'content', 'timestamp']) &&
+            hasOnlyAllowedFields(messageAllowedFields()) &&
+            isValidMessage(request.resource.data, messageId) &&
+            areImmutableFieldsUnchanged(['timestamp', 'role']);
+
+          // Authenticated owner can delete chat messages
+          allow delete: if isOwner(userId);
+        }
+      }
+    }
+  }
+}

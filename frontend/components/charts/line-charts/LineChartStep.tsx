@@ -17,10 +17,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import type { DynamicChartProps } from "../types"
 
 export const description = "A line chart with step"
 
-const chartData = [
+const defaultChartData = [
   { month: "January", desktop: 186 },
   { month: "February", desktop: 305 },
   { month: "March", desktop: 237 },
@@ -29,19 +30,29 @@ const chartData = [
   { month: "June", desktop: 214 },
 ]
 
-const chartConfig = {
+const defaultChartConfig = {
   desktop: {
     label: "Desktop",
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig
 
-export function LineChartStep() {
+export function LineChartStep({
+  data,
+  config,
+  title,
+  description: customDesc,
+  insightText,
+  insightSubText,
+  insightUp,
+}: DynamicChartProps = {}) {
+  const chartData = data && data.length > 0 ? data : defaultChartData
+  const chartConfig = config || defaultChartConfig
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Line Chart - Step</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>{title || "Line Chart - Step"}</CardTitle>
+        <CardDescription>{customDesc || "January - June 2024"}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
@@ -77,7 +88,7 @@ export function LineChartStep() {
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+          {insightText || "Trending up by 5.2% this month"}<TrendingUp className="h-4 w-4" />
         </div>
         <div className="leading-none text-muted-foreground">
           Showing total visitors for the last 6 months

@@ -2,6 +2,7 @@ import json
 import os
 import logging
 import re
+import asyncio
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -33,8 +34,13 @@ class AIService:
             try:
                 from google import genai
                 self.client: Any = genai.Client(api_key=api_key)
-                self._model = "gemini-3.8-flash"
-                logger.info(f"Gemini client initialized (model: {self._model})")
+                self._model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+                self._fallback_models = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-3.8-flash"]
+                if self._model not in self._fallback_models:
+                    self._candidate_models = [self._model] + self._fallback_models
+                else:
+                    self._candidate_models = [self._model] + [m for m in self._fallback_models if m != self._model]
+                logger.info(f"Gemini client initialized (primary: {self._model}, candidates: {self._candidate_models})")
             except ImportError:
                 self.client = None
                 logger.warning("google-genai package not installed — run: pip install google-genai")
@@ -46,40 +52,50 @@ class AIService:
         if not self.client:
             return self._placeholder_insights(dataset_summary)
         prompt = self._build_insights_prompt(dataset_summary)
-        try:
-            from google.genai import types as genai_types
+        
+        from google.genai import types as genai_types
 
-            system = (
-                "You are a senior data analyst. Generate exactly 5 specific, actionable "
-                "business insights from the dataset summary. Each insight MUST reference "
-                "actual statistics from the provided data. Never invent numbers. "
-                "Respond ONLY with valid JSON matching this schema exactly:\n"
-                '{"insights": [{"title": "string", "content": "string", '
-                '"type": "trend|anomaly|correlation|summary|recommendation"}, ...]}'
-            )
+        system = (
+            "You are a senior data analyst. Generate exactly 5 specific, actionable "
+            "business insights from the dataset summary. Each insight MUST reference "
+            "actual statistics from the provided data. Never invent numbers. "
+            "Respond ONLY with valid JSON matching this schema exactly:\n"
+            '{"insights": [{"title": "string", "content": "string", '
+            '"type": "trend|anomaly|correlation|summary|recommendation"}, ...]}'
+        )
 
-            response = self.client.models.generate_content(
-                model=self._model,
-                contents=prompt,
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=system,
-                    temperature=0.3,
-                    response_mime_type="application/json",
-                ),
-            )
+        candidate_models = getattr(self, "_candidate_models", [getattr(self, "_model", "gemini-3.5-flash")])
+        last_error = None
 
-            raw = response.text.strip()
-            # Strip markdown code fences if present
-            raw = re.sub(r"^```(?:json)?\s*", "", raw)
-            raw = re.sub(r"\s*```$", "", raw)
+        for model_name in candidate_models:
+            try:
+                response = await asyncio.to_thread(
+                    self.client.models.generate_content,
+                    model=model_name,
+                    contents=prompt,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=system,
+                        temperature=0.3,
+                        response_mime_type="application/json",
+                    ),
+                )
 
-            data = json.loads(raw)
-            parsed = InsightsOutput(**data)
-            return [i.model_dump() for i in parsed.insights]
+                raw = response.text.strip()
+                # Strip markdown code fences if present
+                raw = re.sub(r"^```(?:json)?\s*", "", raw)
+                raw = re.sub(r"\s*```$", "", raw)
 
-        except Exception as e:
-            logger.error(f"Gemini insights error: {e}")
-            return self._placeholder_insights(dataset_summary)
+                data = json.loads(raw)
+                parsed = InsightsOutput(**data)
+                return [i.model_dump() for i in parsed.insights]
+
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Gemini insights error with {model_name}: {e}. Trying next candidate.")
+                continue
+
+        logger.error(f"All Gemini models failed for insights: {last_error}")
+        return self._placeholder_insights(dataset_summary)
 
     async def answer_question(self, dataset_summary: dict, question: str, raw_csv: str = None) -> dict:
         if not self.client:
@@ -109,30 +125,52 @@ class AIService:
                 fd, tmp_path = tempfile.mkstemp(suffix=".csv")
                 with os.fdopen(fd, 'w', encoding='utf-8') as f:
                     f.write(raw_csv)
-                uploaded_file = self.client.files.upload(file=tmp_path)
+                uploaded_file = await asyncio.to_thread(self.client.files.upload, file=tmp_path)
                 contents.insert(0, uploaded_file)
 
             try:
-                response = self.client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=contents,
-                    config=genai_types.GenerateContentConfig(
-                        system_instruction=system,
-                        temperature=0.2,
-                        max_output_tokens=500,
-                    ),
-                )
+                candidate_models = getattr(self, "_candidate_models", [getattr(self, "_model", "gemini-3.5-flash")])
+                response = None
+                last_err = None
+                for model_name in candidate_models:
+                    try:
+                        response = await asyncio.to_thread(
+                            self.client.models.generate_content,
+                            model=model_name,
+                            contents=contents,
+                            config=genai_types.GenerateContentConfig(
+                                system_instruction=system,
+                                temperature=0.2,
+                                max_output_tokens=500,
+                            ),
+                        )
+                        if response and response.text:
+                            break
+                    except Exception as err:
+                        last_err = err
+                        logger.warning(f"Gemini Q&A error with {model_name}: {err}. Trying fallback.")
+                        continue
+
+                if not response or not response.text:
+                    logger.error(f"All Gemini models failed for Q&A: {last_err}")
+                    return {"answer": "I'm having trouble analyzing the data right now. Please try again shortly.", "chart": None}
+
+                return {"answer": response.text, "chart": None}
             finally:
                 if uploaded_file:
-                    self.client.files.delete(name=uploaded_file.name)
+                    try:
+                        await asyncio.to_thread(self.client.files.delete, name=uploaded_file.name)
+                    except Exception:
+                        pass
                 if tmp_path and os.path.exists(tmp_path):
-                    os.remove(tmp_path)
-
-            return {"answer": response.text, "chart": None}
+                    try:
+                        os.remove(tmp_path)
+                    except Exception:
+                        pass
 
         except Exception as e:
             logger.error(f"Gemini Q&A error: {e}")
-            return {"answer": "sorry but i canot answer do to some problem", "chart": None}
+            return {"answer": "Sorry, I cannot answer due to a temporary problem. Please try again.", "chart": None}
 
     # ── prompt builders ────────────────────────────────────────────────────
 

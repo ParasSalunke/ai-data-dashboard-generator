@@ -85,12 +85,22 @@ async def get_preview(request: AnalyzeRequest):
             }
             for col in df.columns
         ]
+        meta_path = dataset_dir / "meta.json"
+        file_name = "Uploaded Dataset"
+        if meta_path.exists():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                file_name = meta.get("fileName", file_name)
+            except Exception:
+                pass
+
         return _to_python({
             "dataset_id": request.dataset_id,
             "columns": columns,
             "preview": preview,
             "row_count": len(df),
             "col_count": len(df.columns),
+            "fileName": file_name,
         })
 
     try:

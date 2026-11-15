@@ -1,32 +1,31 @@
 'use client';
 
-import { Show, SignInButton, UserButton, useUser } from '@clerk/nextjs'
+import React from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import UserButton from './UserButton';
 
 export function AuthControl() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, openSignIn } = useAuth();
 
   if (!isLoaded) {
     return <Skeleton className="h-8 w-8 rounded-full bg-muted/60" />;
   }
 
   if (isSignedIn) {
-    return (
-      <Show when="signed-in">
-        <UserButton />
-      </Show>
-    );
+    return <UserButton />;
   }
 
   return (
-    <Show when="signed-out">
-      <SignInButton mode="modal">
-        <Button size="default" variant="secondary" className="cursor-pointer rounded-md">
-          Sign In
-        </Button>
-      </SignInButton>
-    </Show>
+    <Button
+      size="default"
+      variant="secondary"
+      onClick={openSignIn}
+      className="cursor-pointer rounded-md"
+    >
+      Sign In
+    </Button>
   );
 }
 

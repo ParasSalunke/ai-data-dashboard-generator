@@ -15,10 +15,11 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import type { DynamicChartProps } from "../types"
 
 export const description = "A stacked bar chart with a legend"
 
-const chartData = [
+const defaultChartData = [
   { date: "2024-07-15", running: 450, swimming: 300 },
   { date: "2024-07-16", running: 380, swimming: 420 },
   { date: "2024-07-17", running: 520, swimming: 120 },
@@ -27,10 +28,7 @@ const chartData = [
   { date: "2024-07-20", running: 480, swimming: 400 },
 ]
 
-const chartConfig = {
-  activities: {
-    label: "Activities",
-  },
+const defaultChartConfig = {
   running: {
     label: "Running",
     color: "var(--chart-1)",
@@ -41,14 +39,19 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function TooltipChartCustomlabel() {
+export function TooltipChartCustomlabel({
+  data,
+  config,
+  title,
+  description: customDesc,
+}: DynamicChartProps = {}) {
+  const chartData = data && data.length > 0 ? data : defaultChartData
+  const chartConfig = config || defaultChartConfig
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tooltip - Custom label</CardTitle>
-        <CardDescription>
-          Tooltip with custom label from chartConfig.
-        </CardDescription>
+        <CardTitle>{title || "Tooltip - Custom label"}</CardTitle>
+        <CardDescription>{customDesc || "Tooltip with custom label from chartConfig."}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
@@ -78,10 +81,17 @@ export function TooltipChartCustomlabel() {
             />
             <ChartTooltip
               content={
-                <ChartTooltipContent labelKey="activities" indicator="line" />
+                <ChartTooltipContent
+                  labelKey="activities"
+                  indicator="line"
+                  labelFormatter={(value, payload) => {
+                    return (
+                      payload?.[0]?.payload?.date ||
+                      value
+                    )
+                  }}
+                />
               }
-              cursor={false}
-              defaultIndex={1}
             />
           </BarChart>
         </ChartContainer>

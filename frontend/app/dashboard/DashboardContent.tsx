@@ -1,12 +1,15 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { UserButton } from '@clerk/nextjs';
+import UserButton from '@/components/auth/UserButton';
+import { useAuth } from '@/context/AuthContext';
+import { updateDatasetAnalysis } from '@/lib/firestore';
 import { useQuery } from '@tanstack/react-query';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { analyzeDataset, getInsights, getPreview } from '@/lib/api';
 import { useDashboardStore } from '@/lib/store';
 import DashboardGrid from '@/components/dashboard/DashboardGrid';
+import { ChartShowcase } from '@/components/charts/ChartShowcase';
 import InsightPanel from '@/components/insight-panel/InsightPanel';
 import DataTable from '@/components/data-table/DataTable';
 import AskPanel from '@/components/ask-panel/AskPanel';
@@ -21,11 +24,11 @@ import {
   ArrowLeft, Database, Search, X, FileDown,
   PanelRightClose, PanelRightOpen,
   Rows3, Columns3, TrendingUp, Hash,
+  LayoutGrid, Sparkles,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
-import type { ChartConfig } from '@/lib/types';
+import type { ChartConfig, Insight } from '@/lib/types';
 import ThemeToggleButton from '@/components/theme/ThemeToggleButton';
 
 const CHART_TYPE_OPTIONS = [
@@ -42,14 +45,22 @@ const CHART_TYPE_OPTIONS = [
 ];
 
 export default function DashboardContent() {
+  const router = useRouter();
   const params = useSearchParams();
-  const { theme, setTheme } = useTheme();
+  const { isSignedIn, isLoaded, user } = useAuth();
   const paramId = params.get('id');
 
-  const { datasetId: storeId, columns, preview, rowCount } = useDashboardStore();
+  const { datasetId: storeId, fileName: storeFileName, columns, preview, rowCount } = useDashboardStore();
   const datasetId = paramId || storeId;
 
+  useEffect(() => {
+    if (isLoaded && !isSignedIn && !datasetId) {
+      router.push('/');
+    }
+  }, [isLoaded, isSignedIn, datasetId, router]);
+
   const [activeTab, setActiveTab] = useState('charts');
+  const [chartView, setChartView] = useState<'showcase' | 'ai'>('showcase');
   const [sidebarTab, setSidebarTab] = useState('insights');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chartFilter, setChartFilter] = useState('all');
@@ -81,20 +92,28 @@ export default function DashboardContent() {
     staleTime: Infinity,
   });
 
-  // No dataset — show empty state
-  if (!datasetId) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background gap-4">
-        <Database className="h-12 w-12 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">No dataset loaded</p>
-        <Button asChild size="sm" variant="outline">
-          <Link href="/">Upload a CSV to get started</Link>
-        </Button>
-      </div>
-    );
-  }
+  // Sync analysis results and insights to Firestore (only with defined fields)
+  useEffect(() => {
+    if (user && datasetId && (analysisQuery.data || insightsQuery.data)) {
+      const updatePayload: { charts?: ChartConfig[]; insights?: Insight[] } = {};
+      if (analysisQuery.data?.chart_suggestions) {
+        updatePayload.charts = analysisQuery.data.chart_suggestions;
+      }
+      if (insightsQuery.data?.insights) {
+        updatePayload.insights = insightsQuery.data.insights;
+      }
+      if (Object.keys(updatePayload).length > 0) {
+        updateDatasetAnalysis(user.uid, datasetId, updatePayload).catch((err) =>
+          console.error('Failed to update Firestore analysis:', err)
+        );
+      }
+    }
+  }, [user, datasetId, analysisQuery.data, insightsQuery.data]);
 
-  const charts = analysisQuery.data?.chart_suggestions ?? [];
+  const charts = useMemo(
+    () => analysisQuery.data?.chart_suggestions ?? [],
+    [analysisQuery.data?.chart_suggestions]
+  );
   const insights = insightsQuery.data?.insights;
 
   // Column + preview data: prefer Zustand store (set during upload), fall back to /preview endpoint
@@ -136,12 +155,10 @@ export default function DashboardContent() {
       const chartElements = document.querySelectorAll('.export-chart-card');
       const chartImages = [];
 
-      for (const el of Array.from(chartElements)) {
-        const id = el.getAttribute('data-chart-export-id');
-        if (!id) continue;
-        
-        const chartConfig = charts.find(c => c.id === id);
-        if (!chartConfig) continue;
+      for (let i = 0; i < chartElements.length; i++) {
+        const el = chartElements[i];
+        const id = el.getAttribute('data-chart-export-id') || `chart-${i}`;
+        const title = el.getAttribute('data-chart-export-title') || charts.find(c => c.id === id)?.title || `Chart ${i + 1}`;
 
         const dataUrl = await toPng(el as HTMLElement, {
             backgroundColor: '#09090b',
@@ -150,12 +167,12 @@ export default function DashboardContent() {
         
         chartImages.push({
             id,
-            title: chartConfig.title,
+            title,
             dataUrl
         });
       }
 
-      const doc = <DashboardReportPDF totalRows={totalRows} columns={columnData.length} chartsCount={charts.length} chartImages={chartImages} />;
+      const doc = <DashboardReportPDF totalRows={totalRows} columns={columnData.length} chartsCount={chartImages.length || charts.length} chartImages={chartImages} />;
       const asPdf = pdf();
       asPdf.updateContainer(doc);
       const blob = await asPdf.toBlob();
@@ -181,6 +198,19 @@ export default function DashboardContent() {
     });
     return counts;
   }, [charts]);
+
+  // No dataset — show empty state
+  if (!datasetId) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background gap-4">
+        <Database className="h-12 w-12 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">No dataset loaded</p>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/">Upload a CSV to get started</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
@@ -263,33 +293,68 @@ export default function DashboardContent() {
             {/* Tab bar + optional filter row (stacked on mobile, side-by-side on sm+) */}
             <div className="shrink-0 border-b border-border/60 bg-card/40">
               {/* Top row: tabs always visible */}
-              <div className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2">
-                <TabsList className="h-8 shrink-0 bg-transparent p-0 gap-0.5">
-                  <TabsTrigger value="charts" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3">
-                    <BarChart3 className="h-3.5 w-3.5 shrink-0" />
-                    <span>Charts</span>
-                    {charts.length > 0 && (
-                      <Badge variant="secondary" className="ml-0.5 h-4 px-1.5 text-[10px]">
-                        {filteredCharts.length}/{charts.length}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="data" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3">
-                    <Table2 className="h-3.5 w-3.5 shrink-0" />
-                    <span>Data</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="ask" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3 md:hidden">
-                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-                    <span>Ask</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="insights" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3 md:hidden">
-                    <Lightbulb className="h-3.5 w-3.5 shrink-0" />
-                    <span>Insights</span>
-                  </TabsTrigger>
-                </TabsList>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 sm:px-4 sm:py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <TabsList className="h-8 shrink-0 bg-transparent p-0 gap-0.5">
+                    <TabsTrigger value="charts" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3">
+                      <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+                      <span>Charts</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="data" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3">
+                      <Table2 className="h-3.5 w-3.5 shrink-0" />
+                      <span>Data</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="ask" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3 md:hidden">
+                      <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                      <span>Ask</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="insights" className="h-8 rounded-lg text-xs gap-1 px-2 sm:gap-1.5 sm:px-3 md:hidden">
+                      <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                      <span>Insights</span>
+                    </TabsTrigger>
+                  </TabsList>
 
-                {/* Desktop search — only in charts tab, hidden on mobile (shown in separate row) */}
-                {activeTab === 'charts' && charts.length > 0 && (
+                  {/* Mode switcher when in Charts tab: Showcase Gallery vs AI Recommended */}
+                  {activeTab === 'charts' && (
+                    <div className="flex items-center rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setChartView('showcase')}
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
+                          chartView === 'showcase'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <LayoutGrid className="h-3.5 w-3.5 text-violet-400" />
+                        <span>Showcase Gallery</span>
+                        <Badge variant="outline" className="border-violet-500/30 text-[10px] text-violet-400 py-0 px-1 font-normal hidden sm:inline-flex">
+                          7 Categories
+                        </Badge>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChartView('ai')}
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
+                          chartView === 'ai'
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                        <span>AI Recommended</span>
+                        {charts.length > 0 && (
+                          <Badge variant="outline" className="border-amber-500/30 text-[10px] text-amber-400 py-0 px-1 font-normal hidden sm:inline-flex">
+                            {charts.length}
+                          </Badge>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop search — only in AI Recommended mode */}
+                {activeTab === 'charts' && chartView === 'ai' && charts.length > 0 && (
                   <div className="ml-auto hidden items-center gap-2 sm:flex">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -312,8 +377,8 @@ export default function DashboardContent() {
                 )}
               </div>
 
-              {/* Filter pills row — full-width horizontal scroll (both mobile + desktop) */}
-              {activeTab === 'charts' && charts.length > 0 && (
+              {/* Filter pills row — only in AI Recommended mode */}
+              {activeTab === 'charts' && chartView === 'ai' && charts.length > 0 && (
                 <div className="flex items-center gap-2 overflow-x-auto border-t border-border/40 px-3 pb-1.5 pt-1 sm:px-4 [&::-webkit-scrollbar]:hidden">
                   {/* Mobile search input */}
                   <div className="relative shrink-0 sm:hidden">
@@ -368,7 +433,7 @@ export default function DashboardContent() {
                 <ScrollArea className="h-full">
                   <div ref={dashboardRef} className="p-4 space-y-4">
                     {/* Summary overview cards */}
-                    {!analysisQuery.isLoading && totalRows > 0 && (
+                    {totalRows > 0 && (
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <div className="rounded-xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm">
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -390,50 +455,63 @@ export default function DashboardContent() {
                         <div className="rounded-xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm">
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
                             <TrendingUp className="h-3.5 w-3.5" />
-                            <span className="text-[11px] font-medium">Charts</span>
+                            <span className="text-[11px] font-medium">Chart Types</span>
                           </div>
-                          <p className="text-lg font-bold text-foreground">{charts.length}</p>
+                          <p className="text-lg font-bold text-foreground">7 Categories</p>
                           <p className="text-[10px] text-muted-foreground mt-0.5">
-                            {new Set(charts.map(c => c.type)).size} types
+                            64+ shadcn charts
                           </p>
                         </div>
                         <div className="rounded-xl border border-border/60 bg-card/60 p-3 backdrop-blur-sm">
                           <div className="flex items-center gap-2 text-muted-foreground mb-1">
                             <Hash className="h-3.5 w-3.5" />
-                            <span className="text-[11px] font-medium">Data Points</span>
+                            <span className="text-[11px] font-medium">Data Source</span>
                           </div>
-                          <p className="text-lg font-bold text-foreground">
-                            {charts.reduce((sum, c) => sum + (c.data?.length || 0), 0).toLocaleString()}
+                          <p className="text-lg font-bold text-foreground truncate">
+                            {storeFileName || previewQuery.data?.fileName || 'Uploaded CSV'}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Dynamic dataset bindings
                           </p>
                         </div>
                       </div>
                     )}
 
-                    {/* Column-level filters */}
-                    {!analysisQuery.isLoading && columnData.length > 0 && (
-                      <FilterBar columns={columnData} charts={charts} />
-                    )}
+                    {chartView === 'showcase' ? (
+                      <ChartShowcase
+                        columns={columnData}
+                        preview={previewData}
+                        fileName={storeFileName || previewQuery.data?.fileName}
+                      />
+                    ) : (
+                      <>
+                        {/* Column-level filters */}
+                        {!analysisQuery.isLoading && columnData.length > 0 && (
+                          <FilterBar columns={columnData} charts={charts} />
+                        )}
 
-                    <DashboardGrid
-                      charts={filteredCharts}
-                      isLoading={analysisQuery.isLoading}
-                    />
-                    {analysisQuery.error && (
-                      <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-                        Failed to analyze dataset: {(analysisQuery.error as Error).message}
-                      </div>
-                    )}
-                    {!analysisQuery.isLoading && filteredCharts.length === 0 && charts.length > 0 && (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <Search className="mb-3 h-8 w-8 text-muted-foreground/40" />
-                        <p className="text-sm text-muted-foreground">No charts match your filter</p>
-                        <button
-                          onClick={() => { setChartFilter('all'); setChartSearch(''); }}
-                          className="mt-2 text-xs text-violet-400 hover:underline"
-                        >
-                          Clear filters
-                        </button>
-                      </div>
+                        <DashboardGrid
+                          charts={filteredCharts}
+                          isLoading={analysisQuery.isLoading}
+                        />
+                        {analysisQuery.error && (
+                          <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+                            Failed to analyze dataset: {(analysisQuery.error as Error).message}
+                          </div>
+                        )}
+                        {!analysisQuery.isLoading && filteredCharts.length === 0 && charts.length > 0 && (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <Search className="mb-3 h-8 w-8 text-muted-foreground/40" />
+                            <p className="text-sm text-muted-foreground">No charts match your filter</p>
+                            <button
+                              onClick={() => { setChartFilter('all'); setChartSearch(''); }}
+                              className="mt-2 text-xs text-violet-400 hover:underline"
+                            >
+                              Clear filters
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                   <ScrollBar orientation="vertical" />

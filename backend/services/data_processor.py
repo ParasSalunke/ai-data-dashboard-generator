@@ -176,7 +176,7 @@ class DataProcessor:
         # Datetime check — test on a sample
         sample = non_null.head(200)
         try:
-            parsed = pd.to_datetime(sample, errors="coerce")
+            parsed = pd.to_datetime(sample, format="mixed", errors="coerce")
             if parsed.notna().mean() >= 0.8:
                 return "datetime"
         except Exception:
