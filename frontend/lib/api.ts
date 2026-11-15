@@ -7,9 +7,22 @@ import type {
   PreviewResponse,
 } from './types';
 
+const getBaseURL = () => {
+  if (typeof window !== 'undefined') {
+    const isLocal =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+    // If running in browser on production, always use same-origin relative URLs
+    if (!isLocal) {
+      return '';
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || '';
+};
+
 export const api = axios.create({
-  // Bypass Next.js rewrites to avoid multipart/form-data body proxying issues
-  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api/backend',
+  // Use relative path on production to avoid localhost / cross-origin issues
+  baseURL: getBaseURL(),
   timeout: 120_000, // 2 min for large CSV + AI processing
 });
 
