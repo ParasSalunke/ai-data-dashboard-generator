@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
-from routes import upload, analyze, insights
+from routes import upload, analyze, insights, docs
 from utils.file_utils import ensure_dataset_storage
 
 logging.basicConfig(
@@ -65,6 +65,9 @@ app = FastAPI(
     description="Backend API for AI-powered data dashboard generator",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # CORS
@@ -81,6 +84,7 @@ app.add_middleware(
 app.include_router(upload.router, tags=["upload"])
 app.include_router(analyze.router, tags=["analyze"])
 app.include_router(insights.router, tags=["insights"])
+app.include_router(docs.router)
 
 
 @app.get("/health", tags=["health"])

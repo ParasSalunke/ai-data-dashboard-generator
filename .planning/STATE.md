@@ -36,7 +36,8 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 | # | Description | Date | Directory |
 |---|-------------|------|-----------|
 | 260729-f81 | Fix TypeScript 7 compatibility issue in frontend | 2026-07-29 | [.planning/quick/260729-f81-fix-typescript-7-compatibility-issue-in-](./quick/260729-f81-fix-typescript-7-compatibility-issue-in-/) |
+| 261116-gro | Implement admin login access for backend API documentation | 2026-11-16 | [.planning/quick/261116-gro-implement-admin-login-access-for-backend](./quick/261116-gro-implement-admin-login-access-for-backend/) |
 
 ---
-*Last updated: 2026-07-29 after completing quick task 260729-f81*
+*Last updated: 2026-11-16 after completing quick task 261116-gro*
 
