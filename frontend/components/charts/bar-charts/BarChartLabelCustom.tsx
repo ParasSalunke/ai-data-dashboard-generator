@@ -78,7 +78,7 @@ export function BarChartLabelCustom({
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => String(value).slice(0, 15)}
               hide
             />
             <XAxis dataKey="desktop" type="number" hide />
@@ -86,7 +86,7 @@ export function BarChartLabelCustom({
               cursor={false}
               content={<ChartTooltipContent indicator="line" />}
             />
-            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4}>
+            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} maxBarSize={32}>
               <LabelList
                 dataKey="month"
                 position="insideLeft"

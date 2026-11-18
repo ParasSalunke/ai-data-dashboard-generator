@@ -113,13 +113,31 @@ export default function DashboardContent() {
     staleTime: Infinity,
   });
 
-  // Fetch preview when store is empty (URL-based navigation) — only when authenticated
+  // Fetch preview when store is empty or has partial rows — only when authenticated
   const previewQuery = useQuery({
     queryKey: ['preview', datasetId],
     queryFn: () => getPreview(datasetId!),
-    enabled: !!datasetId && columns.length === 0 && isSignedIn,
+    enabled: !!datasetId && (columns.length === 0 || preview.length < (rowCount || 1)) && isSignedIn,
     staleTime: Infinity,
   });
+
+  // Keep store hydrated with full dataset rows whenever previewQuery returns more rows
+  useEffect(() => {
+    if (previewQuery.data) {
+      if (previewQuery.data.columns?.length && columns.length === 0) {
+        setColumns(previewQuery.data.columns);
+      }
+      if (previewQuery.data.preview?.length && previewQuery.data.preview.length > preview.length) {
+        setPreview(previewQuery.data.preview);
+      }
+      if (previewQuery.data.row_count && !rowCount) {
+        setRowCount(previewQuery.data.row_count);
+      }
+      if (previewQuery.data.fileName && !storeFileName) {
+        setFileName(previewQuery.data.fileName);
+      }
+    }
+  }, [previewQuery.data, columns.length, preview.length, rowCount, storeFileName, setColumns, setPreview, setRowCount, setFileName]);
 
   // Fetch user's saved dashboards to track quota and save state
   const refreshUserDashboards = useCallback(async () => {

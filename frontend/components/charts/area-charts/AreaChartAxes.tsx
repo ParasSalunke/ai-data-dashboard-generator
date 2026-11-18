@@ -74,7 +74,7 @@ export function AreaChartAxes({
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => String(value).slice(0, 12)}
             />
             <YAxis
               tickLine={false}

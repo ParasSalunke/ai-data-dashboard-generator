@@ -48,13 +48,13 @@ export function BarChartDefault({
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => String(value).slice(0, 10)}
+              tickFormatter={(value) => String(value).slice(0, 15)}
             />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel={false} />}
             />
-            <Bar dataKey={dataKey} fill={`var(--color-${dataKey})`} radius={4} />
+            <Bar dataKey={dataKey} fill={`var(--color-${dataKey})`} radius={4} maxBarSize={60} />
           </BarChart>
         </ChartContainer>
       </CardContent>

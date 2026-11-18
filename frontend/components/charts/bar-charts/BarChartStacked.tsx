@@ -69,7 +69,7 @@ export function BarChartStacked({
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => String(value).slice(0, 15)}
             />
             <ChartTooltip content={<ChartTooltipContent hideLabel />} />
             <ChartLegend content={<ChartLegendContent />} />
@@ -78,12 +78,14 @@ export function BarChartStacked({
               stackId="a"
               fill="var(--color-desktop)"
               radius={[0, 0, 4, 4]}
+              maxBarSize={48}
             />
             <Bar
               dataKey="mobile"
               stackId="a"
               fill="var(--color-mobile)"
               radius={[4, 4, 0, 0]}
+              maxBarSize={48}
             />
           </BarChart>
         </ChartContainer>

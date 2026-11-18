@@ -146,7 +146,7 @@ export function BarChartInteractive({
                 />
               }
             />
-            <Bar dataKey={activeChart} fill={`var(--color-${activeChart})`} radius={4} />
+            <Bar dataKey={activeChart} fill={`var(--color-${activeChart})`} radius={4} maxBarSize={60} />
           </BarChart>
         </ChartContainer>
       </CardContent>

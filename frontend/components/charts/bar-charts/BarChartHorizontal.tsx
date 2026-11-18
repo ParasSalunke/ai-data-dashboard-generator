@@ -61,7 +61,8 @@ export function BarChartHorizontal({
             data={chartData}
             layout="vertical"
             margin={{
-              left: -20,
+              left: 10,
+              right: 16,
             }}
           >
             <XAxis type="number" dataKey="desktop" hide />
@@ -71,13 +72,14 @@ export function BarChartHorizontal({
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              width={90}
+              tickFormatter={(value) => String(value).slice(0, 15)}
             />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
-            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={5} />
+            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={5} maxBarSize={32} />
           </BarChart>
         </ChartContainer>
       </CardContent>

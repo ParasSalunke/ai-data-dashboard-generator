@@ -133,28 +133,25 @@ export function adaptCsvData(
     }
   }
 
+  const hasNumeric = numericCols.length > 0;
+
   // Text/Categorical columns (excluding date and IDs)
   const textCols = columns
     .filter((c) => c.name !== dateCol && !isIdColumn(c.name) && !numericCols.includes(c.name))
     .map((c) => c.name);
 
-  // Determine Primary and Secondary Numeric Columns
-  const num1 = numericCols[0] || 'count';
-  const num2 = numericCols[1] || num1;
-  const num3 = numericCols[2] || num2;
-
-  // Determine Best Category Column (low/medium cardinality between 2 and 15 unique items)
+  // Determine Best Category Column (cardinality between 2 and 25 unique items)
   let catCol = '';
   const groupableCols = textCols.filter((name) => {
     const uniques = new Set(rows.map((r) => String(r[name] ?? ''))).size;
-    return uniques >= 2 && uniques <= 20;
+    return uniques >= 2 && uniques <= 25;
   });
 
   if (groupableCols.length > 0) {
     // Prioritize columns whose name sounds like a categorical attribute
     groupableCols.sort((a, b) => {
-      const aPriority = /category|department|dept|product|city|class|type|status|mode|condition|gender|role/i.test(a) ? 0 : 1;
-      const bPriority = /category|department|dept|product|city|class|type|status|mode|condition|gender|role/i.test(b) ? 0 : 1;
+      const aPriority = /category|department|dept|segment|product|city|class|type|status|mode|condition|gender|role/i.test(a) ? 0 : 1;
+      const bPriority = /category|department|dept|segment|product|city|class|type|status|mode|condition|gender|role/i.test(b) ? 0 : 1;
       return aPriority - bPriority;
     });
     catCol = groupableCols[0];
@@ -164,127 +161,81 @@ export function adaptCsvData(
     catCol = dateCol || columns[0]?.name || 'category';
   }
 
+  // Secondary categorical / grouping column (e.g. city, state, department)
+  const secondaryCatCol =
+    textCols.find((c) => c !== catCol && !/name|id/i.test(c)) ||
+    textCols.find((c) => c !== catCol) ||
+    '';
+
+  // Infer entity name for display
+  let entityName = 'Records';
+  const nameSource = (fileName || '') + ' ' + columns.map((c) => c.name).join(' ');
+  if (/customer/i.test(nameSource)) entityName = 'Customers';
+  else if (/employee|staff|worker/i.test(nameSource)) entityName = 'Employees';
+  else if (/user|member|account/i.test(nameSource)) entityName = 'Users';
+  else if (/product|item/i.test(nameSource)) entityName = 'Products';
+  else if (/order|sale|invoice/i.test(nameSource)) entityName = 'Orders';
+  else if (/student/i.test(nameSource)) entityName = 'Students';
+  else if (/patient/i.test(nameSource)) entityName = 'Patients';
+  else if (/lead|contact/i.test(nameSource)) entityName = 'Leads';
+
+  // Determine Primary and Secondary Numeric Columns
+  const num1 = numericCols[0] || '';
+  const num2 = numericCols[1] || num1;
+  const num3 = numericCols[2] || num2;
+
+  const num1Label = hasNumeric ? formatColumnTitle(num1) : entityName;
+  const num2Label = hasNumeric
+    ? (num2 !== num1 ? formatColumnTitle(num2) : `Average ${num1Label}`)
+    : (secondaryCatCol ? `Unique ${formatColumnTitle(secondaryCatCol)}` : 'Share (%)');
+
   // Determine Best Row Label Column (e.g. date, student_name, employee_name, product, or description)
   const nameCol = textCols.find((c) => /name|title|product|description|label/i.test(c));
   const labelCol = dateCol || nameCol || catCol;
 
-  // 2. Format Chronological / Row Progression Data (Area & Line Charts)
-  let sortedRows = [...rows];
-  if (dateCol) {
-    sortedRows.sort((a, b) => {
-      const da = new Date(String(a[dateCol])).getTime();
-      const db = new Date(String(b[dateCol])).getTime();
-      return isNaN(da) || isNaN(db) ? 0 : da - db;
-    });
-  }
-
-  // Keep up to 30 data points
-  const step = Math.max(1, Math.floor(sortedRows.length / 30));
-  const sampledRows = sortedRows.filter((_, idx) => idx % step === 0).slice(0, 30);
-
-  const areaData = sampledRows.map((r, i) => {
-    let dateStr = '';
-    let shortLabel = '';
-
-    if (dateCol && r[dateCol]) {
-      const rawDate = String(r[dateCol]).trim();
-      const parsed = new Date(rawDate);
-      if (!isNaN(parsed.getTime())) {
-        dateStr = rawDate.slice(0, 10);
-        shortLabel = parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      } else {
-        dateStr = rawDate.slice(0, 10);
-        shortLabel = rawDate.slice(0, 8);
-      }
-    } else {
-      const rawLabel = String(r[labelCol] || `Item ${i + 1}`).trim();
-      dateStr = rawLabel;
-      shortLabel = rawLabel.length > 12 ? rawLabel.slice(0, 10) + '…' : rawLabel;
-    }
-
-    const val1 = Number(r[num1]) || 0;
-    const val2 = num2 !== num1 && r[num2] !== undefined ? Number(r[num2]) || 0 : Math.round(val1 * 0.75);
-    const val3 = num3 !== num2 && r[num3] !== undefined ? Number(r[num3]) || 0 : Math.round((val1 + val2) / 2);
-
-    return {
-      date: dateStr,
-      month: shortLabel,
-      category: shortLabel,
-      name: shortLabel,
-      label: shortLabel,
-      desktop: val1,
-      mobile: val2,
-      running: val1,
-      swimming: val2,
-      visitors: val1,
-      value: val1,
-      count: val1,
-      other: val3,
-      fill: PALETTE[i % PALETTE.length],
-    };
-  });
-
-  // Calculate Area & Line Trends
-  const firstPoint = areaData[0]?.desktop ?? 0;
-  const lastPoint = areaData[areaData.length - 1]?.desktop ?? 0;
-  const areaChangePct =
-    firstPoint !== 0
-      ? (((lastPoint - firstPoint) / Math.abs(firstPoint)) * 100).toFixed(1)
-      : '0.0';
-  const areaIsUp = Number(areaChangePct) >= 0;
-
-  const firstDate = areaData[0]?.date || 'Start';
-  const lastDate = areaData[areaData.length - 1]?.date || 'End';
-
-  const num1Label = formatColumnTitle(num1);
-  const num2Label = formatColumnTitle(num2);
-
-  const areaConfig: ChartConfig = {
-    desktop: { label: num1Label, color: 'var(--chart-1)' },
-    mobile: { label: num2Label, color: 'var(--chart-2)' },
-    running: { label: num1Label, color: 'var(--chart-1)' },
-    swimming: { label: num2Label, color: 'var(--chart-2)' },
-    visitors: { label: num1Label, color: 'var(--chart-1)' },
-    value: { label: num1Label, color: 'var(--chart-1)' },
-    count: { label: num1Label, color: 'var(--chart-1)' },
-    other: { label: formatColumnTitle(num3 || 'Other'), color: 'var(--chart-4)' },
-  };
-
-  const areaTrend = {
-    text: `${num1Label}: Trending ${areaIsUp ? 'up' : 'down'} by ${Math.abs(Number(areaChangePct))}% (${formatMetricUnit(firstPoint, num1)} → ${formatMetricUnit(lastPoint, num1)})`,
-    subText: `${firstDate} – ${lastDate} (${areaData.length} records)`,
-    isUp: areaIsUp,
-  };
-
-  // 3. Format Bar Data (Categorical Aggregation by catCol)
+  // ── 3. Format Bar Data (Categorical Aggregation by catCol) ──────────────
   const categoryAggregates: Record<
     string,
-    { count: number; sum1: number; sum2: number }
+    { count: number; sum1: number; sum2: number; distinct2: Set<string> }
   > = {};
 
   for (const r of rows) {
     const rawCat = String(r[catCol] ?? 'General').trim() || 'General';
     if (!categoryAggregates[rawCat]) {
-      categoryAggregates[rawCat] = { count: 0, sum1: 0, sum2: 0 };
+      categoryAggregates[rawCat] = { count: 0, sum1: 0, sum2: 0, distinct2: new Set() };
     }
     categoryAggregates[rawCat].count += 1;
-    categoryAggregates[rawCat].sum1 += Number(r[num1]) || 0;
-    categoryAggregates[rawCat].sum2 += Number(r[num2]) || 0;
+    if (hasNumeric && num1) {
+      categoryAggregates[rawCat].sum1 += Number(r[num1]) || 0;
+      if (num2 && num2 !== num1) {
+        categoryAggregates[rawCat].sum2 += Number(r[num2]) || 0;
+      }
+    }
+    if (secondaryCatCol && r[secondaryCatCol] != null && r[secondaryCatCol] !== '') {
+      categoryAggregates[rawCat].distinct2.add(String(r[secondaryCatCol]));
+    }
   }
 
   // Sort by metric sum or frequency
   const sortedCategories = Object.entries(categoryAggregates)
-    .sort((a, b) => (b[1].sum1 || b[1].count) - (a[1].sum1 || a[1].count))
-    .slice(0, 8);
+    .sort((a, b) => (hasNumeric && b[1].sum1 ? b[1].sum1 - a[1].sum1 : b[1].count - a[1].count))
+    .slice(0, 10);
 
   const avgMetric =
-    sortedCategories.reduce((acc, [, val]) => acc + (val.sum1 || val.count), 0) /
+    sortedCategories.reduce((acc, [, val]) => acc + (hasNumeric && val.sum1 > 0 ? val.sum1 : val.count), 0) /
     (sortedCategories.length || 1);
 
   const barData = sortedCategories.map(([cat, stats], i) => {
     const slug = cat.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const metricVal = stats.sum1 > 0 ? Math.round(stats.sum1) : stats.count;
-    const secondaryVal = stats.sum2 > 0 ? Math.round(stats.sum2) : Math.round(stats.count * 0.7);
+    const metricVal = hasNumeric && stats.sum1 > 0 ? Math.round(stats.sum1) : stats.count;
+    let secondaryVal: number;
+    if (hasNumeric && num2 !== num1 && stats.sum2 > 0) {
+      secondaryVal = Math.round(stats.sum2);
+    } else if (!hasNumeric && stats.distinct2.size > 0) {
+      secondaryVal = stats.distinct2.size;
+    } else {
+      secondaryVal = Math.round((stats.count / Math.max(1, totalRows)) * 100);
+    }
     const deviation = Math.round(metricVal - avgMetric);
 
     return {
@@ -304,7 +255,11 @@ export function adaptCsvData(
 
   const topCategory = barData[0]?.category || 'None';
   const topVal = barData[0]?.desktop || 0;
-  const totalSum1 = sortedCategories.reduce((sum, [, s]) => sum + s.sum1, 0);
+  const topCatCount = barData[0]?.count || 0;
+  const totalMetricSum = sortedCategories.reduce(
+    (sum, [, s]) => sum + (hasNumeric && s.sum1 > 0 ? s.sum1 : s.count),
+    0
+  );
 
   const barConfig: ChartConfig = {
     desktop: { label: num1Label, color: 'var(--chart-1)' },
@@ -312,7 +267,7 @@ export function adaptCsvData(
     running: { label: num1Label, color: 'var(--chart-1)' },
     swimming: { label: num2Label, color: 'var(--chart-2)' },
     visitors: { label: `${num1Label} Variance`, color: 'var(--chart-3)' },
-    count: { label: 'Record Count', color: 'var(--chart-1)' },
+    count: { label: num1Label, color: 'var(--chart-1)' },
     value: { label: num1Label, color: 'var(--chart-1)' },
   };
 
@@ -325,8 +280,149 @@ export function adaptCsvData(
   });
 
   const barTrend = {
-    text: `Highest ${formatColumnTitle(catCol)}: ${topCategory} (${formatMetricUnit(topVal, num1)})`,
-    subText: `Total ${num1Label}: ${formatMetricUnit(totalSum1 || topVal, num1)} across ${sortedCategories.length} categories`,
+    text: `Highest ${formatColumnTitle(catCol)}: ${topCategory} (${formatMetricUnit(topVal, num1 || entityName)})`,
+    subText: `Total ${num1Label}: ${formatMetricUnit(totalMetricSum, num1 || entityName)} across ${sortedCategories.length} categories`,
+    isUp: true,
+  };
+
+  // ── 2. Format Chronological / Row Progression Data (Area & Line Charts) ─
+  let areaData: Array<Record<string, unknown>> = [];
+
+  if (dateCol) {
+    // If a date column is present, group records chronologically
+    const sortedRows = [...rows].sort((a, b) => {
+      const da = new Date(String(a[dateCol])).getTime();
+      const db = new Date(String(b[dateCol])).getTime();
+      return isNaN(da) || isNaN(db) ? 0 : da - db;
+    });
+
+    const step = Math.max(1, Math.floor(sortedRows.length / 30));
+    const sampledRows = sortedRows.filter((_, idx) => idx % step === 0).slice(0, 30);
+
+    areaData = sampledRows.map((r, i) => {
+      const rawDate = String(r[dateCol]).trim();
+      const parsed = new Date(rawDate);
+      const dateStr = !isNaN(parsed.getTime()) ? rawDate.slice(0, 10) : rawDate.slice(0, 10);
+      const shortLabel = !isNaN(parsed.getTime())
+        ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : rawDate.slice(0, 8);
+
+      const val1 = hasNumeric ? Number(r[num1]) || 0 : Math.round(((i + 1) / sampledRows.length) * totalRows);
+      const val2 = hasNumeric && num2 !== num1 && r[num2] !== undefined
+        ? Number(r[num2]) || 0
+        : Math.round(val1 * 0.7);
+      const val3 = Math.round((val1 + val2) / 2);
+
+      return {
+        date: dateStr,
+        month: shortLabel,
+        category: shortLabel,
+        name: shortLabel,
+        label: shortLabel,
+        desktop: val1,
+        mobile: val2,
+        running: val1,
+        swimming: val2,
+        visitors: val1,
+        value: val1,
+        count: val1,
+        other: val3,
+        fill: PALETTE[i % PALETTE.length],
+      };
+    });
+  } else if (hasNumeric) {
+    // No date column, but has numeric column: sample rows
+    const step = Math.max(1, Math.floor(rows.length / 30));
+    const sampledRows = rows.filter((_, idx) => idx % step === 0).slice(0, 30);
+
+    areaData = sampledRows.map((r, i) => {
+      const recordIdx = Math.min(totalRows, (i + 1) * step);
+      const dateStr = `Record ${recordIdx}`;
+      const shortLabel = `R${recordIdx}`;
+      const val1 = Number(r[num1]) || 0;
+      const val2 = num2 !== num1 && r[num2] !== undefined ? Number(r[num2]) || 0 : Math.round(val1 * 0.75);
+      const val3 = Math.round((val1 + val2) / 2);
+
+      return {
+        date: dateStr,
+        month: shortLabel,
+        category: shortLabel,
+        name: shortLabel,
+        label: shortLabel,
+        desktop: val1,
+        mobile: val2,
+        running: val1,
+        swimming: val2,
+        visitors: val1,
+        value: val1,
+        count: val1,
+        other: val3,
+        fill: PALETTE[i % PALETTE.length],
+      };
+    });
+  } else {
+    // Pure categorical dataset (e.g. customers.csv: id, name, segment, state, city)
+    // Create cumulative sequence checkpoints across all records
+    const numPoints = Math.min(25, Math.max(8, Math.floor(totalRows / 10)));
+    const topCatRatio = totalRows > 0 ? topCatCount / totalRows : 0.5;
+
+    areaData = Array.from({ length: numPoints }, (_, i) => {
+      const recordIdx = Math.min(totalRows, Math.round(((i + 1) / numPoints) * totalRows));
+      const dateStr = `Record ${recordIdx}`;
+      const shortLabel = `R${recordIdx}`;
+      const val1 = recordIdx; // Cumulative total records (e.g. 32 -> 793)
+      const val2 = Math.round(recordIdx * topCatRatio); // Cumulative top category (e.g. 17 -> 409)
+      const val3 = Math.max(0, val1 - val2); // Remaining records (e.g. 15 -> 384)
+
+      return {
+        date: dateStr,
+        month: shortLabel,
+        category: shortLabel,
+        name: shortLabel,
+        label: shortLabel,
+        desktop: val1,
+        mobile: val2,
+        running: val1,
+        swimming: val2,
+        visitors: val1,
+        value: val1,
+        count: val1,
+        other: val3,
+        fill: PALETTE[i % PALETTE.length],
+      };
+    });
+  }
+
+  // Calculate Area & Line Trends
+  const firstPoint = Number(areaData[0]?.desktop ?? 0);
+  const lastPoint = Number(areaData[areaData.length - 1]?.desktop ?? 0);
+  const areaChangePct =
+    firstPoint !== 0
+      ? (((lastPoint - firstPoint) / Math.abs(firstPoint)) * 100).toFixed(1)
+      : '0.0';
+  const areaIsUp = Number(areaChangePct) >= 0;
+
+  const firstDate = String(areaData[0]?.date || 'Start');
+  const lastDate = String(areaData[areaData.length - 1]?.date || 'End');
+
+  const areaConfig: ChartConfig = {
+    desktop: { label: hasNumeric ? num1Label : `Total ${entityName}`, color: 'var(--chart-1)' },
+    mobile: { label: hasNumeric ? num2Label : `${topCategory} ${entityName}`, color: 'var(--chart-2)' },
+    running: { label: num1Label, color: 'var(--chart-1)' },
+    swimming: { label: num2Label, color: 'var(--chart-2)' },
+    visitors: { label: num1Label, color: 'var(--chart-1)' },
+    value: { label: num1Label, color: 'var(--chart-1)' },
+    count: { label: num1Label, color: 'var(--chart-1)' },
+    other: { label: hasNumeric ? formatColumnTitle(num3 || 'Other') : 'Other Segments', color: 'var(--chart-4)' },
+  };
+
+  const areaTrend = {
+    text: hasNumeric
+      ? `${num1Label}: Trending ${areaIsUp ? 'up' : 'down'} by ${Math.abs(Number(areaChangePct))}% (${formatMetricUnit(firstPoint, num1)} → ${formatMetricUnit(lastPoint, num1)})`
+      : `${topCategory}: ${topCatCount} of ${totalRows} total ${entityName} (${Math.round((topCatCount / Math.max(1, totalRows)) * 100)}%)`,
+    subText: hasNumeric
+      ? `${firstDate} – ${lastDate} (${areaData.length} records)`
+      : `Cumulative progression across all ${totalRows} records in ${datasetName}`,
     isUp: true,
   };
 
@@ -371,8 +467,15 @@ export function adaptCsvData(
 
   // 5. Format Radar Data
   const radarData = sortedCategories.slice(0, 6).map(([cat, stats]) => {
-    const dVal = stats.sum1 > 0 ? Math.round(stats.sum1) : stats.count * 10;
-    const mVal = stats.sum2 > 0 ? Math.round(stats.sum2) : Math.round(dVal * 0.7);
+    const dVal = hasNumeric && stats.sum1 > 0 ? Math.round(stats.sum1) : stats.count;
+    let mVal: number;
+    if (hasNumeric && num2 !== num1 && stats.sum2 > 0) {
+      mVal = Math.round(stats.sum2);
+    } else if (!hasNumeric && stats.distinct2.size > 0) {
+      mVal = stats.distinct2.size;
+    } else {
+      mVal = Math.round(dVal * 0.7);
+    }
     return {
       month: cat,
       category: cat,
@@ -400,7 +503,7 @@ export function adaptCsvData(
   const radialData = [...pieData];
   const radialConfig = { ...pieConfig };
   const radialTrend = {
-    text: `Top performer: ${topCategory} with ${formatMetricUnit(pieData[0]?.visitors || 0, num1)}`,
+    text: `Top performer: ${topCategory} with ${formatMetricUnit(pieData[0]?.visitors || 0, num1 || entityName)}`,
     subText: `Aggregated from ${totalRows} records in ${datasetName}`,
     isUp: true,
   };

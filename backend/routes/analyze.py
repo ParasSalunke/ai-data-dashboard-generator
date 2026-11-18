@@ -67,7 +67,7 @@ async def get_preview(request: AnalyzeRequest):
 
     def _load_preview():
         df = pd.read_parquet(parquet_path)
-        preview_df = df.head(100)
+        preview_df = df.head(50000)
         preview = json.loads(
             preview_df.where(preview_df.notna(), None).to_json(
                 orient="records", default_handler=str

@@ -35,12 +35,15 @@ _ID_PATTERNS = re.compile(
 
 def _is_id_column(col: str, series: pd.Series) -> bool:
     """Return True if this column looks like a primary-key/row-number column."""
-    if _ID_PATTERNS.match(col.strip()):
-        # Also require near-monotonic unique values
-        if pd.api.types.is_numeric_dtype(series):
-            n = len(series.dropna())
-            if n > 0 and series.nunique() / n > 0.95:
-                return True
+    clean_col = col.strip().lower()
+    if _ID_PATTERNS.match(clean_col):
+        return True
+    if clean_col.endswith("_id") or clean_col.startswith("id_"):
+        return True
+    n = len(series.dropna())
+    if n > 0 and series.nunique() / n > 0.95:
+        if "id" in clean_col or "uuid" in clean_col or "guid" in clean_col:
+            return True
     return False
 
 
@@ -58,7 +61,7 @@ class ChartGenerator:
 
         for col, dtype in column_types.items():
             # Skip ID-like columns (not interesting to chart individually)
-            if dtype == "numeric" and _is_id_column(col, df[col]):
+            if _is_id_column(col, df[col]):
                 logger.info(f"Skipping ID-like column: {col!r}")
                 continue
 
@@ -78,11 +81,17 @@ class ChartGenerator:
                         suggestions.append(ts)
 
             elif dtype in ("categorical", "boolean"):
+                n_unique = df[col].nunique()
+                n_total = len(df[col].dropna())
+                # Skip high-cardinality unique text columns (like customer names, emails) where each entry has count 1
+                if n_total > 10 and n_unique / n_total > 0.8:
+                    logger.info(f"Skipping high-cardinality column: {col!r}")
+                    continue
+
                 bar = self._make_bar_chart(df, col, color)
                 if bar:
                     suggestions.append(bar)
                 # Pie only for low-cardinality columns (max 8 slices, meaningful)
-                n_unique = df[col].nunique()
                 if 2 <= n_unique <= 8:
                     pie = self._make_pie_chart(df, col, CHART_COLORS)
                     if pie:

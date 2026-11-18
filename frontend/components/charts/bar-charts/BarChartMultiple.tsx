@@ -67,14 +67,14 @@ export function BarChartMultiple({
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => String(value).slice(0, 15)}
             />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent indicator="dashed" />}
             />
-            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
-            <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} />
+            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} maxBarSize={32} />
+            <Bar dataKey="mobile" fill="var(--color-mobile)" radius={4} maxBarSize={32} />
           </BarChart>
         </ChartContainer>
       </CardContent>

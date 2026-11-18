@@ -140,8 +140,9 @@ class DataProcessor:
                 "sample_values": sample_values,
             })
 
-        # Preview rows (first 50) — NaN-safe JSON
-        preview_df = df.head(50)
+        # Dataset rows for interactive exploration and visualization (up to 50,000 rows)
+        MAX_PREVIEW_ROWS = 50000
+        preview_df = df.head(MAX_PREVIEW_ROWS)
         preview = json.loads(
             preview_df.where(preview_df.notna(), None).to_json(orient="records", default_handler=str)
         )
