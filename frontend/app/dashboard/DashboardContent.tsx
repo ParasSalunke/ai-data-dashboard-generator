@@ -244,6 +244,7 @@ export default function DashboardContent() {
   const handleExportPDF = useCallback(async () => {
     if (exporting) return;
     setExporting(true);
+    toast.loading('Generating executive PDF report...', { id: 'pdf-export' });
     try {
       const { toPng } = await import('html-to-image');
       const { pdf } = await import('@react-pdf/renderer');
@@ -252,40 +253,59 @@ export default function DashboardContent() {
       const chartElements = document.querySelectorAll('.export-chart-card');
       const chartImages = [];
 
-      for (let i = 0; i < chartElements.length; i++) {
+      // Include up to 6 key charts for a clean, balanced multi-page report
+      const maxCharts = Math.min(chartElements.length, 6);
+
+      for (let i = 0; i < maxCharts; i++) {
         const el = chartElements[i];
         const id = el.getAttribute('data-chart-export-id') || `chart-${i}`;
-        const title = el.getAttribute('data-chart-export-title') || charts.find(c => c.id === id)?.title || `Chart ${i + 1}`;
+        const title =
+          el.getAttribute('data-chart-export-title') ||
+          charts.find((c) => c.id === id)?.title ||
+          `Chart ${i + 1}`;
 
         const dataUrl = await toPng(el as HTMLElement, {
-            backgroundColor: '#09090b',
-            pixelRatio: 2,
+          backgroundColor: '#09090b',
+          pixelRatio: 2,
         });
-        
+
         chartImages.push({
-            id,
-            title,
-            dataUrl
+          id,
+          title,
+          dataUrl,
         });
       }
 
-      const doc = <DashboardReportPDF totalRows={totalRows} columns={columnData.length} chartsCount={chartImages.length || charts.length} chartImages={chartImages} />;
+      const doc = (
+        <DashboardReportPDF
+          fileName={currentTitle}
+          totalRows={totalRows}
+          columns={columnData}
+          summaryStats={analysisQuery.data?.summary_stats || []}
+          insights={insights || []}
+          chartImages={chartImages}
+        />
+      );
+
       const asPdf = pdf();
       asPdf.updateContainer(doc);
       const blob = await asPdf.toBlob();
-      
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'dashboard-report.pdf';
+      const cleanFileName = (currentTitle || 'dashboard').replace(/[^a-zA-Z0-9_-]/g, '_');
+      a.download = `${cleanFileName}-report.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success('Executive report downloaded successfully', { id: 'pdf-export' });
     } catch (err) {
       console.error('PDF export failed:', err);
+      toast.error('Failed to generate PDF report', { id: 'pdf-export' });
     } finally {
       setExporting(false);
     }
-  }, [exporting, totalRows, columnData.length, charts]);
+  }, [exporting, currentTitle, totalRows, columnData, analysisQuery.data, insights, charts]);
 
   // Chart type counts for filter badges
   const typeCounts = useMemo(() => {
